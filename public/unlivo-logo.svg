@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 90" role="img" aria-labelledby="title desc"><title id="title">UNLIVO</title><desc id="desc">UNLIVO geometric U logo and wordmark</desc><defs><linearGradient id="u" x1="18" y1="78" x2="88" y2="8" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#06385c"/><stop offset=".48" stop-color="#08c9b1"/><stop offset="1" stop-color="#7fe86a"/></linearGradient></defs><path d="M20 10v47c0 18 13 31 30 31s30-13 30-31V18L57 4v49c0 8-4 13-11 13-8 0-12-6-12-15V10Z" fill="url(#u)"/><path d="M57 4l23 14-23 14-17-12Z" fill="#7fe86a" opacity=".95"/><text x="102" y="61" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" letter-spacing="-2.2" fill="#102638">UNLIVO</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 150" role="img" aria-labelledby="title desc">
+  <title id="title">UNLIVO</title>
+  <desc id="desc">UNLIVO geometric U logo, wordmark and tagline</desc>
+  <defs>
+    <linearGradient id="u" x1="18" y1="120" x2="112" y2="12" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#06385c"/>
+      <stop offset="0.48" stop-color="#08c9b1"/>
+      <stop offset="1" stop-color="#7fe86a"/>
+    </linearGradient>
+  </defs>
+  <path d="M20 18v68c0 26 19 45 45 45s45-19 45-45V30L76 10v70c0 12-6 19-17 19-12 0-18-9-18-22V18Z" fill="url(#u)"/>
+  <path d="M76 10l34 20-34 21-25-18Z" fill="#7fe86a" opacity=".95"/>
+  <text x="142" y="76" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="800" letter-spacing="-2.5" fill="#102638">UNLIVO</text>
+  <text x="145" y="113" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="500" letter-spacing="4.2" fill="#536575">FIND THE RIGHT PROPERTY. FIND THE RIGHT BUYER.</text>
+</svg>
