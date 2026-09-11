@@ -17,6 +17,11 @@ export default function PropertySearch() {
   const [category, setCategory] = useState("all");
   const [budget, setBudget] = useState("all");
 
+  function chooseTab(value: string) {
+    setPurpose(value === "sale" || value === "rent" ? value : "sale");
+    if (value === "commercial" || value === "plot_land" || value === "project") setCategory(value);
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const params = new URLSearchParams();
@@ -31,7 +36,7 @@ export default function PropertySearch() {
     <form onSubmit={submit} className="rounded-2xl border border-white/70 bg-white p-4 shadow-soft sm:p-5">
       <div className="mb-4 flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-[#edf1f3] pb-3 text-[13px] font-bold">
         {tabs.map(({ label, value, icon: Icon }) => (
-          <button type="button" key={value} onClick={() => setPurpose(value)} className={`flex items-center gap-2 border-b-2 pb-2 transition ${purpose === value ? "border-[#102638] text-[#102638]" : "border-transparent text-[#5d6d7c]"}`}>
+          <button type="button" key={value} onClick={() => chooseTab(value)} className={`flex items-center gap-2 border-b-2 pb-2 transition ${((value === "sale" || value === "rent") ? purpose === value : category === value) ? "border-[#102638] text-[#102638]" : "border-transparent text-[#5d6d7c]"}`}>
             <Icon size={20} />{label}
           </button>
         ))}
