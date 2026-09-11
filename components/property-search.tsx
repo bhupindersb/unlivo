@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, ChevronDown, Hand, Home, KeyRound, LandPlot, Search } from "lucide-react";
+import { Building2, ChevronDown, Home, KeyRound, LandPlot, Search } from "lucide-react";
 
 const tabs = [
   { label: "Buy", value: "sale", icon: Home },
@@ -56,7 +56,7 @@ export default function PropertySearch() {
             <option value="all">Budget</option><option value="0-5000000">Under ₹50 Lakh</option><option value="5000000-10000000">₹50 Lakh – ₹1 Cr</option><option value="10000000-25000000">₹1 – ₹2.5 Cr</option><option value="25000000-9999999999">₹2.5 Cr+</option>
           </select><ChevronDown size={17} className="pointer-events-none absolute right-4 text-[#71818d]" />
         </label>
-        <button type="submit" className="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#071d2d] px-8 py-3 text-[13px] font-bold text-white transition hover:bg-[#102f44)"><Search size={17} />Search</button>
+        <button type="submit" className="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#071d2d] px-8 py-3 text-[13px] font-bold text-white transition hover:bg-[#102f44]"><Search size={17} />Search</button>
       </div>
     </form>
   );
