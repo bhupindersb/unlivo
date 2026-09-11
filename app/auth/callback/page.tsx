@@ -6,13 +6,14 @@ import { supabase } from "../../../lib/supabase";
 export default function AuthCallbackPage(){
   const [error,setError]=useState("");
   useEffect(()=>{
-    if(!supabase)return;
+    const client=supabase;
+    if(!client)return;
     const finish=async()=>{
       const code=new URLSearchParams(window.location.search).get("code");
       if(!code){window.location.replace("/post-property?confirmed=1");return;}
-      const {data,error}=await supabase.auth.exchangeCodeForSession(code);
+      const {data,error}=await client.auth.exchangeCodeForSession(code);
       if(error){setError(error.message);return;}
-      if(data.user) await supabase.from("profiles").upsert({id:data.user.id,role:"buyer"},{onConflict:"id",ignoreDuplicates:true});
+      if(data.user) await client.from("profiles").upsert({id:data.user.id,role:"buyer"},{onConflict:"id",ignoreDuplicates:true});
       window.location.replace("/post-property?confirmed=1");
     };
     finish();
