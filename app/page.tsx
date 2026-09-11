@@ -61,7 +61,7 @@ export default function HomePage() {
 
     <section id="requirement" className="bg-[#071d2d] py-16 text-white"><div className="container flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between"><div><h2 className="text-3xl font-extrabold tracking-[-1px]">Be Part of a More Connected<br/>Real Estate Future</h2><p className="mt-3 max-w-[650px] text-sm leading-6 text-white/65">Whether you’re a buyer, owner or broker — UNLIVO gives you the tools, reach and support to achieve more.</p></div><a href="#" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#13c6a3] px-7 py-4 text-[13px] font-extrabold text-[#06251f]">Get Started <ArrowRight size={17}/></a></div></section>
 
-    <footer id="resources" className="border-t border-[#e5ecef] py-10"><div className="container flex flex-col gap-4 text-sm text-[#667887] md:flex-row md:items-center md:justify-between"><a href="#" className="w-[105px]" aria-label="UNLIVO home"><img src="/unlivo-logo.svg" alt="UNLIVO" className="w-full"/></a><p>© 2026 UNLIVO. Find the right property. Find the right buyer.</p><div className="flex gap-5"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a></div></div></footer>
+    <footer id="resources" className="border-t border-[#e5ecef] py-10"><div className="container flex flex-col gap-4 text-sm text-[#667887] md:flex-row md:items-center md:justify-between"><a href="#" className="w-[160px]" aria-label="UNLIVO home"><img src="/unlivo-logo.svg" alt="UNLIVO" className="w-full"/></a><p>© 2026 UNLIVO. Find the right property. Find the right buyer.</p><div className="flex gap-5"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Contact</a></div></div></footer>
   </main>
 }
 
