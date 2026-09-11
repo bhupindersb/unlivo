@@ -1,0 +1,3 @@
+export default function SiteFooter() {
+  return <footer id="resources" className="border-t border-[#e5ecef] bg-white py-10"><div className="container flex flex-col gap-5 md:flex-row md:items-center md:justify-between"><a href="/" className="w-[160px]" aria-label="UNLIVO home"><img src="/unlivo-logo.svg" alt="UNLIVO" className="w-full"/></a><p className="text-sm text-[#667887]">© 2026 UNLIVO. Find the right property. Find the right buyer.</p><div className="flex gap-5 text-sm text-[#667887]"><a href="#" className="hover:text-[#087f73]">Privacy</a><a href="#" className="hover:text-[#087f73]">Terms</a><a href="#" className="hover:text-[#087f73]">Contact</a></div></div></footer>;
+}
