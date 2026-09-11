@@ -13,7 +13,7 @@ export default function HomePage() {
   return <main>
     <header className="absolute left-0 right-0 top-0 z-30">
       <div className="container flex h-[82px] items-center justify-between">
-        <a href="#" aria-label="UNLIVO home" className="block w-[148px] sm:w-[172px]"><img src="/unlivo-logo.svg" alt="UNLIVO" className="h-auto w-full" /></a>
+        <a href="#" aria-label="UNLIVO home" className="block w-[180px] sm:w-[230px]"><img src="/unlivo-logo.svg" alt="UNLIVO" className="h-auto w-full" /></a>
         <nav className="hidden items-center gap-9 md:flex">{nav.map(x=><a key={x} href={x === "For Brokers" ? "#brokers" : "#search"} className="text-[13px] font-medium text-[#193246] transition hover:text-[#08aa91]">{x}</a>)}<a href="#resources" className="flex items-center gap-1 text-[13px] font-medium text-[#193246] hover:text-[#08aa91]">Resources <ChevronDown size={15}/></a></nav>
         <div className="flex items-center gap-3"><button className="hidden px-3 py-2 text-[13px] font-semibold text-[#193246] md:block">Login</button><button className="rounded-full bg-[#071d2d] px-6 py-3 text-[13px] font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:bg-[#102f44]">Sign Up</button></div>
       </div>
