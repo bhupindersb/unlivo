@@ -11,7 +11,6 @@ import {
   FileText,
   HandCoins,
   LayoutDashboard,
-  LogOut,
   MessageSquare,
   Settings,
   ShieldCheck,
@@ -151,6 +150,15 @@ export default function AdminDashboard() {
     { label: "Reviewers", value: metrics.reviewers || 0, icon: ShieldCheck, tone: "bg-[#edf3f8] text-[#3e627b]" },
   ];
 
+  const propertyMetrics = [
+    { label: "Total Properties", value: metrics.totalProperties || 0, icon: Building2, bg: "#eef4f8" },
+    { label: "Published", value: metrics.published || 0, icon: CheckCircle2, bg: "#eaf7f4" },
+    { label: "Under Review", value: metrics.pendingReview || 0, icon: Clock3, bg: "#fff7e8" },
+    { label: "Rejected", value: metrics.rejected || 0, icon: XCircle, bg: "#fff1f1" },
+    { label: "Sold / Rented", value: (metrics.sold || 0) + (metrics.rented || 0), icon: HandCoins, bg: "#f3eef9" },
+    { label: "Active Requirements", value: metrics.activeRequirements || 0, icon: ClipboardList, bg: "#eef4f8" },
+  ];
+
   if (loading || allowed === null) return <main className="min-h-screen bg-[#f5f8fa] text-[#102638]"><div className="flex min-h-screen items-center justify-center text-sm text-[#607889]">Loading secure operations dashboard…</div></main>;
 
   return (
@@ -197,14 +205,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-            {[
-              ["Total Properties", metrics.totalProperties || 0, Building2, "#eef4f8"],
-              ["Published", metrics.published || 0, CheckCircle2, "#eaf7f4"],
-              ["Under Review", metrics.pendingReview || 0, Clock3, "#fff7e8"],
-              ["Rejected", metrics.rejected || 0, XCircle, "#fff1f1"],
-              ["Sold / Rented", (metrics.sold || 0) + (metrics.rented || 0), HandCoins, "#f3eef9"],
-              ["Active Requirements", metrics.activeRequirements || 0, ClipboardList, "#eef4f8"],
-            ].map(([label, value, Icon, bg]) => <div key={String(label)} className="flex items-center gap-3 rounded-2xl border border-[#dce7eb] bg-white px-4 py-4 shadow-sm"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#087f73]" style={{ backgroundColor: bg as string }}><Icon size={17} /></div><div className="min-w-0"><p className="text-xl font-extrabold text-[#071d2d]">{String(value)}</p><p className="truncate text-[11px] font-semibold text-[#71838e]">{String(label)}</p></div></div>)}
+            {propertyMetrics.map(({ label, value, icon: Icon, bg }) => <div key={label} className="flex items-center gap-3 rounded-2xl border border-[#dce7eb] bg-white px-4 py-4 shadow-sm"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#087f73]" style={{ backgroundColor: bg }}><Icon size={17} /></div><div className="min-w-0"><p className="text-xl font-extrabold text-[#071d2d]">{value}</p><p className="truncate text-[11px] font-semibold text-[#71838e]">{label}</p></div></div>)}
           </div>
 
           <div className="mt-5 grid gap-5 xl:grid-cols-[1.55fr_1fr]">
