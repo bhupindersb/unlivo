@@ -10,12 +10,9 @@ const FIELD_RULES = [
 ] as const;
 
 function findField(form: HTMLFormElement, labelText: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null {
-  const labels = Array.from(form.querySelectorAll("label"));
-  const label = labels.find((item) => item.textContent?.trim() === labelText);
+  const label = Array.from(form.querySelectorAll("label")).find((item) => item.textContent?.trim() === labelText);
   const control = label?.nextElementSibling;
-  return control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement
-    ? control
-    : null;
+  return control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement ? control : null;
 }
 
 function getPriceField(form: HTMLFormElement) {
@@ -49,69 +46,84 @@ function clearError(field: HTMLElement) {
   field.parentElement?.querySelector("[data-field-error]")?.remove();
 }
 
+function attachValidation(form: HTMLFormElement) {
+  const requiredFields = FIELD_RULES.map((rule) => ({ ...rule, field: findField(form, rule.label) })).filter(
+    (item): item is typeof item & { field: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement } => Boolean(item.field),
+  );
+  const priceRule = getPriceField(form);
+
+  const validate = () => {
+    let firstInvalid: HTMLElement | null = null;
+    let valid = true;
+
+    for (const item of requiredFields) {
+      if (!item.field.value.trim()) {
+        showError(item.field, item.message);
+        if (!firstInvalid) firstInvalid = item.field;
+        valid = false;
+      } else {
+        clearError(item.field);
+      }
+    }
+
+    if (priceRule.field) {
+      if (!priceRule.field.value.trim()) {
+        showError(priceRule.field, priceRule.message);
+        if (!firstInvalid) firstInvalid = priceRule.field;
+        valid = false;
+      } else {
+        clearError(priceRule.field);
+      }
+    }
+
+    if (firstInvalid) {
+      firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => firstInvalid?.focus({ preventScroll: true }), 250);
+    }
+
+    return valid;
+  };
+
+  const handleSubmit = (event: Event) => {
+    if (!validate()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
+
+  const handleFieldChange = (event: Event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
+    if (target.getAttribute("aria-invalid") === "true" && target.value.trim()) clearError(target);
+  };
+
+  form.addEventListener("submit", handleSubmit, true);
+  form.addEventListener("input", handleFieldChange);
+  form.addEventListener("change", handleFieldChange);
+
+  return () => {
+    form.removeEventListener("submit", handleSubmit, true);
+    form.removeEventListener("input", handleFieldChange);
+    form.removeEventListener("change", handleFieldChange);
+  };
+}
+
 export default function PostPropertyValidation() {
   useEffect(() => {
-    const form = document.querySelector<HTMLFormElement>('form.mt-8.space-y-6');
-    if (!form) return;
-
-    const requiredFields = FIELD_RULES.map((rule) => ({ ...rule, field: findField(form, rule.label) })).filter(
-      (item): item is typeof item & { field: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement } => Boolean(item.field),
-    );
-    const priceRule = getPriceField(form);
-
-    const validate = () => {
-      let firstInvalid: HTMLElement | null = null;
-      let valid = true;
-
-      for (const item of requiredFields) {
-        if (!item.field.value.trim()) {
-          showError(item.field, item.message);
-          if (!firstInvalid) firstInvalid = item.field;
-          valid = false;
-        } else {
-          clearError(item.field);
-        }
-      }
-
-      if (priceRule.field) {
-        if (!priceRule.field.value.trim()) {
-          showError(priceRule.field, priceRule.message);
-          if (!firstInvalid) firstInvalid = priceRule.field;
-          valid = false;
-        } else {
-          clearError(priceRule.field);
-        }
-      }
-
-      if (firstInvalid) {
-        firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
-        window.setTimeout(() => firstInvalid?.focus({ preventScroll: true }), 250);
-      }
-
-      return valid;
+    let cleanup: (() => void) | null = null;
+    const attach = () => {
+      if (cleanup) return;
+      const form = document.querySelector<HTMLFormElement>('form.mt-8.space-y-6');
+      if (form) cleanup = attachValidation(form);
     };
 
-    const handleSubmit = (event: Event) => {
-      if (!validate()) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-      }
-    };
-
-    const handleFieldChange = (event: Event) => {
-      const target = event.target;
-      if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) return;
-      if (target.getAttribute("aria-invalid") === "true" && target.value.trim()) clearError(target);
-    };
-
-    form.addEventListener("submit", handleSubmit, true);
-    form.addEventListener("input", handleFieldChange);
-    form.addEventListener("change", handleFieldChange);
+    attach();
+    const observer = new MutationObserver(attach);
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      form.removeEventListener("submit", handleSubmit, true);
-      form.removeEventListener("input", handleFieldChange);
-      form.removeEventListener("change", handleFieldChange);
+      observer.disconnect();
+      cleanup?.();
     };
   }, []);
 
