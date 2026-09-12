@@ -24,7 +24,10 @@ function getPriceField(form: HTMLFormElement) {
     return text === "Sale price (₹)" || text === "Monthly rent (₹)";
   });
   const control = label?.nextElementSibling;
-  return control instanceof HTMLInputElement ? control : null;
+  return {
+    field: control instanceof HTMLInputElement ? control : null,
+    message: label?.textContent?.trim() === "Monthly rent (₹)" ? "Please enter the monthly rent." : "Please enter the sale price.",
+  };
 }
 
 function showError(field: HTMLElement, message: string) {
@@ -54,15 +57,9 @@ export default function PostPropertyValidation() {
     const requiredFields = FIELD_RULES.map((rule) => ({ ...rule, field: findField(form, rule.label) })).filter(
       (item): item is typeof item & { field: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement } => Boolean(item.field),
     );
+    const priceRule = getPriceField(form);
 
-    const priceRule = {
-      field: getPriceField(form),
-      get message() {
-        return form.querySelector("select")?.value === "rent" ? "Please enter the monthly rent." : "Please enter the sale price.";
-      },
-    };
-
-    const validate = (scroll = true) => {
+    const validate = () => {
       let firstInvalid: HTMLElement | null = null;
       let valid = true;
 
@@ -86,7 +83,7 @@ export default function PostPropertyValidation() {
         }
       }
 
-      if (firstInvalid && scroll) {
+      if (firstInvalid) {
         firstInvalid.scrollIntoView({ behavior: "smooth", block: "center" });
         window.setTimeout(() => firstInvalid?.focus({ preventScroll: true }), 250);
       }
@@ -95,7 +92,7 @@ export default function PostPropertyValidation() {
     };
 
     const handleSubmit = (event: Event) => {
-      if (!validate(true)) {
+      if (!validate()) {
         event.preventDefault();
         event.stopImmediatePropagation();
       }
