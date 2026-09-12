@@ -28,9 +28,7 @@ export default function ConfirmPage() {
         const code = query.get("code");
         const hashError = hash.get("error_description") || hash.get("error");
 
-        if (hashError) {
-          throw new Error(decodeURIComponent(hashError.replace(/\+/g, " ")));
-        }
+        if (hashError) throw new Error(decodeURIComponent(hashError.replace(/\+/g, " ")));
 
         if (tokenHash && queryType) {
           const result = await client.auth.verifyOtp({ token_hash: tokenHash, type: queryType });
@@ -44,22 +42,24 @@ export default function ConfirmPage() {
 
         const sessionResult = await client.auth.getSession();
         const user = sessionResult.data.session?.user;
-        if (!user) {
-          throw new Error("We could not establish your session. Please request a new confirmation email and try again.");
-        }
+        if (!user) throw new Error("We could not establish your session. Please request a new confirmation email and try again.");
+
+        const metadata = user.user_metadata || {};
+        const fullName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim() || null;
+        const phone = typeof metadata.phone === "string" && metadata.phone.trim() ? metadata.phone.trim() : null;
 
         await client.from("profiles").upsert(
-          { id: user.id, email: user.email ?? null },
-          { onConflict: "id", ignoreDuplicates: true }
+          {
+            id: user.id,
+            email: user.email ?? null,
+            full_name: fullName,
+            phone,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
         );
 
-        // Email confirmation proves ownership of the address, but we deliberately
-        // do not keep the newly confirmed signup session. The user must explicitly
-        // log in before accessing the application, giving the confirmation flow an
-        // additional authentication boundary.
-        if (queryType === "signup" || (!queryType && !code)) {
-          await client.auth.signOut();
-        }
+        if (queryType === "signup" || (!queryType && !code)) await client.auth.signOut();
 
         if (!cancelled) {
           setConfirmedType(queryType ?? "signup");
@@ -73,51 +73,20 @@ export default function ConfirmPage() {
     };
 
     finish();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f7fafb] px-6 text-[#102638]">
-      <div className="w-full max-w-md rounded-3xl border border-[#dfe9ed] bg-white p-8 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-3xl border border-[#dfe9ed] bg-white p-8 text-center shadow-[0_18px_55px_rgba(16,38,56,0.08)]">
         <img src="/unlivo-logo.svg" alt="UNLIVO" className="mx-auto w-[210px]" />
-        <div className="mx-auto mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[#e9faf6] text-[#0b8f79]">
-          {status === "error" ? <span className="text-xl">!</span> : <CheckCircle2 size={30} />}
-        </div>
-        <h1 className="mt-5 text-2xl font-extrabold">
-          {status === "error" ? "Confirmation link problem" : status === "success" ? "Email verified successfully" : "Confirming your UNLIVO account"}
-        </h1>
+        <div className="mx-auto mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-[#e9faf6] text-[#0b8f79]">{status === "error" ? <span className="text-xl">!</span> : <CheckCircle2 size={30} />}</div>
+        <h1 className="mt-5 text-2xl font-extrabold">{status === "error" ? "Confirmation link problem" : status === "success" ? "Email verified successfully" : "Confirming your UNLIVO account"}</h1>
         <p className="mt-3 text-sm leading-6 text-[#687987]">
-          {status === "error"
-            ? error
-            : status === "success"
-              ? confirmedType === "invite"
-                ? "Your UNLIVO staff invitation has been confirmed. You can now continue to your staff login."
-                : "Your email address has been verified. For your security, please log in to continue."
-              : "Please wait while we securely verify your email…"}
+          {status === "error" ? error : status === "success" ? confirmedType === "invite" ? "Your UNLIVO staff invitation has been confirmed. You can now continue to your staff login." : "Your email address has been verified. For your security, please log in to continue." : "Please wait while we securely verify your email…"}
         </p>
-        {status === "success" && (
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <a
-              href={confirmedType === "invite" ? "/reviewer/login" : "/post-property?mode=login"}
-              className="inline-flex items-center justify-center rounded-xl bg-[#123b53] px-6 py-3 text-sm font-bold text-white"
-            >
-              {confirmedType === "invite" ? "Continue to Staff Login" : "Log in to UNLIVO"}
-            </a>
-            <a
-              href="/"
-              className="inline-flex items-center justify-center rounded-xl border border-[#cfdde3] bg-white px-6 py-3 text-sm font-bold text-[#123b53]"
-            >
-              Go to Homepage
-            </a>
-          </div>
-        )}
-        {status === "error" && (
-          <a href="/" className="mt-6 inline-flex rounded-xl bg-[#123b53] px-6 py-3 text-sm font-bold text-white">
-            Return to UNLIVO
-          </a>
-        )}
+        {status === "success" && <div className="mt-7 grid gap-3 sm:grid-cols-2"><a href={confirmedType === "invite" ? "/reviewer/login" : "/login"} className="inline-flex items-center justify-center rounded-xl bg-[#123b53] px-5 py-3 text-sm font-bold text-white">{confirmedType === "invite" ? "Continue to Staff Login" : "Log in to UNLIVO"}</a><a href="/" className="inline-flex items-center justify-center rounded-xl border border-[#cfdde3] bg-white px-5 py-3 text-sm font-bold text-[#123b53]">Go to Homepage</a></div>}
+        {status === "error" && <a href="/" className="mt-6 inline-flex rounded-xl bg-[#123b53] px-6 py-3 text-sm font-bold text-white">Return to UNLIVO</a>}
       </div>
     </main>
   );
