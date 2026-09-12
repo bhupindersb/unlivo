@@ -9,7 +9,12 @@ export default function ConfirmPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!supabase) return;
+    const client = supabase;
+    if (!client) {
+      setError("Authentication is temporarily unavailable. Please try again.");
+      setStatus("error");
+      return;
+    }
 
     let cancelled = false;
 
@@ -28,11 +33,11 @@ export default function ConfirmPage() {
 
         // Support the token-hash confirmation template when it is configured.
         if (tokenHash && queryType) {
-          const result = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: queryType });
+          const result = await client.auth.verifyOtp({ token_hash: tokenHash, type: queryType });
           if (result.error) throw result.error;
         } else if (code) {
           // Support PKCE-style confirmation redirects as well.
-          const result = await supabase.auth.exchangeCodeForSession(code);
+          const result = await client.auth.exchangeCodeForSession(code);
           if (result.error) throw result.error;
         } else {
           // For the client-side implicit flow, Supabase's browser client consumes
@@ -40,13 +45,13 @@ export default function ConfirmPage() {
           await new Promise((resolve) => setTimeout(resolve, 150));
         }
 
-        const sessionResult = await supabase.auth.getSession();
+        const sessionResult = await client.auth.getSession();
         const user = sessionResult.data.session?.user;
         if (!user) {
           throw new Error("We could not establish your session. Please request a new confirmation email and try again.");
         }
 
-        await supabase.from("profiles").upsert(
+        await client.from("profiles").upsert(
           { id: user.id, email: user.email ?? null },
           { onConflict: "id", ignoreDuplicates: true }
         );
