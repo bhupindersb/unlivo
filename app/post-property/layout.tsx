@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import PostPropertyValidation from "../../components/post-property-validation";
 
-export default function PostPropertyLayout({ children }: { children: React.ReactNode }) {
+export default function PostPropertyLayout({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
