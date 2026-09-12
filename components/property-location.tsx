@@ -1,7 +1,98 @@
 "use client";
-import { useEffect,useRef } from "react";
-declare global{interface Window{google?:any}}
-type Place={address:string;city:string;locality:string;pincode:string;latitude:number|null;longitude:number|null;placeId:string|null};type Props={value:string;onChange:(v:string)=>void;onPlace:(p:Place)=>void};
-export default function PropertyLocation({value,onChange,onPlace}:Props){const inputRef=useRef<HTMLInputElement>(null);const changeRef=useRef(onChange);const placeRef=useRef(onPlace);useEffect(()=>{changeRef.current=onChange;placeRef.current=onPlace},[onChange,onPlace]);useEffect(()=>{const key=process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;if(!key||!inputRef.current)return;let autocomplete:any;const setup=()=>{if(!window.google?.maps?.places||!inputRef.current)return;autocomplete=new window.google.maps.places.Autocomplete(inputRef.current,{componentRestrictions:{country:"in"},fields:["formatted_address","address_components","geometry","place_id"],types:["address"]});autocomplete.addListener("place_changed",()=>{const place=autocomplete.getPlace();const parts=place.address_components||[];const get=(types:string[])=>parts.find((c:any)=>types.some(t=>c.types.includes(t)))?.long_name||"";const city=get(["locality","administrative_area_level_2","administrative_area_level_1"]);const locality=get(["sublocality_level_1","sublocality","neighborhood","route"]);const pincode=get(["postal_code"]);const lat=place.geometry?.location?.lat?.()??null;const lng=place.geometry?.location?.lng?.()??null;const address=place.formatted_address||"";changeRef.current(address);placeRef.current({address,city,locality,pincode,latitude:lat,longitude:lng,placeId:place.place_id||null})})};const existing=document.querySelector('script[data-unlivo-google-maps]');if(window.google?.maps?.places)setup();else if(existing)existing.addEventListener("load",setup);else{const script=document.createElement("script");script.src=`https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;script.async=true;script.defer=true;script.dataset.unlivoGoogleMaps="true";script.onload=setup;document.head.appendChild(script)}return()=>{if(existing)existing.removeEventListener("load",setup);if(autocomplete?.unbindAll)autocomplete.unbindAll()};},[]);
-return <div><input ref={inputRef} className="w-full rounded-xl border border-[#d7e3e8] bg-white px-4 py-3 text-sm text-[#102638] outline-none focus:border-[#0bb89b] focus:ring-2 focus:ring-[#0bb89b]/10" value={value} onChange={e=>changeRef.current(e.target.value)} placeholder="Start typing the property address…" autoComplete="off"/><p className="mt-2 text-xs text-[#7b8c97]">Select an address from the suggestions so UNLIVO can locate it accurately.</p></div>;
+
+import { useEffect, useRef, useState } from "react";
+
+type Place = {
+  address: string;
+  city: string;
+  locality: string;
+  pincode: string;
+  latitude: number | null;
+  longitude: number | null;
+  placeId: string | null;
+};
+
+type Suggestion = {
+  id: string;
+  place_name?: string;
+  text?: string;
+  properties?: { full_address?: string; name?: string };
+  center?: [number, number];
+  geometry?: { coordinates?: [number, number] };
+  context?: Array<{ id?: string; text?: string }>;
+};
+
+type Props = { value: string; onChange: (value: string) => void; onPlace: (place: Place) => void };
+
+function contextValue(feature: Suggestion, prefixes: string[]) {
+  return feature.context?.find((item) => prefixes.some((prefix) => item.id?.startsWith(prefix)))?.text || "";
+}
+
+export default function PropertyLocation({ value, onChange, onPlace }: Props) {
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const changeRef = useRef(onChange);
+  const placeRef = useRef(onPlace);
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+  useEffect(() => {
+    changeRef.current = onChange;
+    placeRef.current = onPlace;
+  }, [onChange, onPlace]);
+
+  useEffect(() => {
+    if (!token) return;
+    const query = value.trim();
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ q: query, country: "in", language: "en", limit: "5", autocomplete: "true", access_token: token });
+        const response = await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("Location search failed");
+        const data = await response.json();
+        setSuggestions(data.features || []);
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") setSuggestions([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 350);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [value, token]);
+
+  function selectSuggestion(feature: Suggestion) {
+    const coordinates = feature.geometry?.coordinates || feature.center || [];
+    const longitude = typeof coordinates[0] === "number" ? coordinates[0] : null;
+    const latitude = typeof coordinates[1] === "number" ? coordinates[1] : null;
+    const address = feature.properties?.full_address || feature.place_name || feature.text || "";
+    const city = contextValue(feature, ["place", "city", "district"]);
+    const locality = contextValue(feature, ["locality", "neighborhood", "district"]);
+    const pincode = contextValue(feature, ["postcode"]);
+    changeRef.current(address);
+    placeRef.current({ address, city, locality, pincode, latitude, longitude, placeId: feature.id || null });
+    setSuggestions([]);
+  }
+
+  return (
+    <div className="relative">
+      <input ref={inputRef} className="w-full rounded-xl border border-[#d7e3e8] bg-white px-4 py-3 text-sm text-[#102638] outline-none transition focus:border-[#0bb89b] focus:ring-2 focus:ring-[#0bb89b]/10" value={value} onChange={(event) => changeRef.current(event.target.value)} placeholder="Start typing the property address…" autoComplete="off" aria-autocomplete="list" />
+      {token && suggestions.length > 0 && (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-xl border border-[#d7e3e8] bg-white shadow-lg">
+          {suggestions.map((suggestion) => (
+            <button key={suggestion.id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)} className="block w-full cursor-pointer px-4 py-3 text-left text-sm text-[#102638] hover:bg-[#f1fbf8]">
+              <span className="block font-semibold">{suggestion.text || suggestion.properties?.name || suggestion.place_name}</span>
+              <span className="mt-0.5 block text-xs text-[#687987]">{suggestion.properties?.full_address || suggestion.place_name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="mt-2 text-xs text-[#7b8c97]">{loading ? "Finding matching addresses…" : "Select an address from the suggestions so UNLIVO can locate it accurately."}</p>
+    </div>
+  );
 }
