@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Building2, ChevronDown, LogOut, Menu, ShieldCheck, UserCircle, X } from "lucide-react";
+import { Building2, ChevronDown, LogOut, Menu, Plus, ShieldCheck, SlidersHorizontal, UserCircle, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
@@ -66,12 +66,12 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
             {open && <div className="absolute right-0 top-[52px] z-50 w-64 overflow-hidden rounded-2xl border border-[#dfe9ed] bg-white p-2 shadow-[0_18px_50px_rgba(16,38,56,0.14)]" role="menu">
               <div className="border-b border-[#e8eef1] px-3 py-3"><p className="text-xs font-semibold uppercase tracking-[1.2px] text-[#7b8c97]">Signed in as</p><p className="mt-1 truncate text-sm font-extrabold text-[#102638]">{user.email}</p></div>
               <div className="py-2">
-                <a href="/my-properties" onClick={() => setOpen(false)} className={menuLink}><Building2 size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Properties</span></a>
-                <a href="/my-requirements" onClick={() => setOpen(false)} className={menuLink}><SlidersHorizontal size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Requirements</span></a>
-                <a href="/post-requirement" onClick={() => setOpen(false)} className={menuLink}><Plus size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>Post a Requirement</span></a>
+                <a href="/my-properties" onClick={() => setOpen(false)} className={menuLink}><Building2 size={17} className="shrink-0 text-[#087f73]" /><span>My Properties</span></a>
+                <a href="/my-requirements" onClick={() => setOpen(false)} className={menuLink}><SlidersHorizontal size={17} className="shrink-0 text-[#087f73]" /><span>My Requirements</span></a>
+                <a href="/post-requirement" onClick={() => setOpen(false)} className={menuLink}><Plus size={17} className="shrink-0 text-[#087f73]" /><span>Post a Requirement</span></a>
                 <div className="mx-3 my-1 border-t border-[#edf1f3]" />
-                <a href="/profile" onClick={() => setOpen(false)} className={menuLink}><UserCircle size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Profile</span></a>
-                {(role === "admin" || role === "reviewer") && <><div className="mx-3 my-1 border-t border-[#edf1f3]" /><a href={staffHref} onClick={() => setOpen(false)} className={menuLink}><ShieldCheck size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>{staffLabel}</span></a></>}
+                <a href="/profile" onClick={() => setOpen(false)} className={menuLink}><UserCircle size={17} className="shrink-0 text-[#087f73]" /><span>My Profile</span></a>
+                {(role === "admin" || role === "reviewer") && <><div className="mx-3 my-1 border-t border-[#edf1f3]" /><a href={staffHref} onClick={() => setOpen(false)} className={menuLink}><ShieldCheck size={17} className="shrink-0 text-[#087f73]" /><span>{staffLabel}</span></a></>}
                 <div className="mx-3 my-1 border-t border-[#edf1f3]" />
                 <a href="/post-property" onClick={() => setOpen(false)} className="mt-1 flex items-center justify-center rounded-xl bg-[#071d2d] px-3 py-2.5 text-sm font-bold text-white transition hover:bg-[#102f44] hover:shadow-md">Post Property</a>
               </div>
