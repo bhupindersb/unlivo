@@ -1,38 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogOut } from "lucide-react";
+import { BarChart3, CheckCircle2, Clock3, FileCheck2, LogOut, XCircle } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 export default function ReviewerDashboard() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [name, setName] = useState("Reviewer");
-
-  useEffect(() => {
-    const client = supabase;
-    if (!client) return;
-    (async () => {
-      const { data: auth } = await client.auth.getUser();
-      if (!auth.user) { window.location.href = "/reviewer/login"; return; }
-      const { data: profile } = await client.from("profiles").select("role, full_name, access_status").eq("id", auth.user.id).maybeSingle();
-      if (profile?.role !== "reviewer" || profile.access_status === "revoked") { await client.auth.signOut(); window.location.href = "/reviewer/login"; return; }
-      setName(profile.full_name || "Reviewer");
-      setAllowed(true);
-    })();
-  }, []);
-
-  const logout = async () => { if (supabase) await supabase.auth.signOut(); window.location.href = "/reviewer/login"; };
-
-  if (!allowed) return <main className="flex min-h-screen items-center justify-center bg-[#f5f8fa] text-sm text-[#607889]">Checking secure access…</main>;
-
-  return (
-    <main className="min-h-screen bg-[#f5f8fa]">
-      <div className="border-b bg-white"><div className="mx-auto flex h-[78px] max-w-6xl items-center justify-between px-5"><a href="/" className="block w-[180px] sm:w-[220px]"><img src="/unlivo-logo.svg" alt="UNLIVO" className="w-full" /></a><div className="flex items-center gap-2 sm:gap-3"><span className="hidden text-sm font-semibold text-[#607889] sm:block">{name}</span><a href="/profile" className="rounded-full border border-[#d7e3e8] px-4 py-2 text-sm font-semibold text-[#193246] hover:border-[#0bb89b]">Profile</a><button type="button" onClick={logout} className="inline-flex items-center gap-2 rounded-full border border-[#ead8d8] px-4 py-2 text-sm font-bold text-[#9b4d4d] hover:border-[#d28b8b] hover:bg-[#fff8f8]"><LogOut size={16}/>Logout</button></div></div></div>
-      <div className="mx-auto max-w-6xl px-5 py-10">
-        <div className="mb-8"><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#087f73]">UNLIVO Property Review</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#071d2d]">Welcome, {name}.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-[#607889]">Review the properties assigned to you and help keep UNLIVO's marketplace accurate and trustworthy.</p></div>
-        <a href="/admin/properties" className="group block rounded-2xl border border-[#dce7eb] bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"><div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e8f7f4] text-xl">✓</div><h2 className="mt-5 text-xl font-bold text-[#071d2d]">My Review Queue</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#607889]">Open your assigned property reviews, inspect listing details and media, then approve or reject each submission with an appropriate review note.</p><span className="mt-6 inline-block rounded-full bg-[#071d2d] px-5 py-3 text-sm font-bold text-white">Open assigned reviews →</span></a>
-        <div className="mt-8 rounded-2xl border border-[#dce7eb] bg-white p-6"><h2 className="font-bold text-[#071d2d]">Reviewer access</h2><p className="mt-2 text-sm leading-6 text-[#607889]">Your account must have the <strong>reviewer</strong> role and active access. Review assignments are enforced at the database level, so a reviewer cannot approve or reject properties assigned to someone else.</p></div>
-      </div>
-    </main>
-  );
+  const [stats, setStats] = useState({ pending: 0, completed: 0, approved: 0, rejected: 0 });
+  useEffect(() => { const client=supabase; if(!client)return; (async()=>{const {data:auth}=await client.auth.getUser();if(!auth.user){window.location.href="/reviewer/login";return}const {data:profile}=await client.from("profiles").select("role,full_name,access_status").eq("id",auth.user.id).maybeSingle();if(profile?.role!=="reviewer"||profile.access_status==="revoked"){await client.auth.signOut();window.location.href="/reviewer/login";return}setName(profile.full_name||"Reviewer");const {data:rows}=await client.from("property_reviews").select("decision").eq("assigned_to",auth.user.id);const all=rows||[];setStats({pending:all.filter((r:any)=>r.decision==="pending").length,completed:all.filter((r:any)=>r.decision!=="pending").length,approved:all.filter((r:any)=>r.decision==="approved").length,rejected:all.filter((r:any)=>r.decision==="rejected").length});setAllowed(true)})() },[]);
+  const logout=async()=>{if(supabase)await supabase.auth.signOut();window.location.href="/reviewer/login"};
+  if(!allowed)return <main className="flex min-h-screen items-center justify-center bg-[#f5f8fa] text-sm text-[#607889]">Checking secure access…</main>;
+  const cards=[{label:"Pending Reviews",value:stats.pending,icon:Clock3},{label:"Completed",value:stats.completed,icon:FileCheck2},{label:"Approved",value:stats.approved,icon:CheckCircle2},{label:"Rejected",value:stats.rejected,icon:XCircle}];
+  return <main className="min-h-screen bg-[#f5f8fa] text-[#102638]"><header className="border-b border-[#dfe8ec] bg-white"><div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-5 lg:px-8"><a href="/reviewer" className="w-[185px] sm:w-[220px]"><img src="/unlivo-logo.svg" alt="UNLIVO" className="w-full"/></a><div className="flex items-center gap-2 sm:gap-3"><span className="hidden text-sm font-semibold text-[#607889] sm:block">Reviewer Portal</span><a href="/reviewer" className="rounded-xl bg-[#eaf7f4] px-3 py-2 text-sm font-bold text-[#087f73]">Dashboard</a><a href="/reviewer/reviews" className="rounded-xl px-3 py-2 text-sm font-bold text-[#193246] hover:bg-[#f1f8f7]">My Reviews</a><a href="/profile" className="rounded-xl border border-[#d7e3e8] px-4 py-2 text-sm font-semibold text-[#193246]">Profile</a><button onClick={logout} className="inline-flex items-center gap-2 rounded-xl border border-[#ead8d8] px-4 py-2 text-sm font-bold text-[#9b4d4d]"><LogOut size={16}/>Logout</button></div></div></header><div className="mx-auto max-w-[1320px] px-5 py-8 lg:px-8 lg:py-10"><div className="mb-8"><p className="text-[11px] font-bold uppercase tracking-[3px] text-[#087f73]">UNLIVO Reviewer Portal</p><h1 className="mt-2 text-4xl font-extrabold tracking-[-1.5px]">Welcome, {name}.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-[#687987]">Your dashboard shows only your reviewer activity and assignments. Admin operations are kept completely separate.</p></div><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{cards.map(({label,value,icon:Icon})=><div key={label} className="rounded-2xl border border-[#dfe9ed] bg-white p-5 shadow-sm"><Icon size={20} className="text-[#0b8f79]"/><p className="mt-4 text-3xl font-extrabold">{value}</p><p className="mt-1 text-xs font-semibold text-[#71838e]">{label}</p></div>)}</div><div className="mt-8 grid gap-6 lg:grid-cols-[1.35fr_.65fr]"><section className="rounded-3xl border border-[#dfe9ed] bg-white p-7 shadow-sm"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[1.5px] text-[#547083]">Your workspace</p><h2 className="mt-1 text-2xl font-extrabold">My Review Queue</h2><p className="mt-2 text-sm leading-6 text-[#687987]">Open property submissions assigned specifically to you. Inspect photos and details, add a note, and approve or reject the listing.</p></div><BarChart3 className="hidden text-[#0bb89b] sm:block" size={30}/></div><a href="/reviewer/reviews" className="mt-6 inline-flex rounded-xl bg-[#123b53] px-5 py-3 text-sm font-bold text-white">Open My Reviews →</a></section><section className="rounded-3xl border border-[#dfe9ed] bg-white p-7 shadow-sm"><p className="text-xs font-bold uppercase tracking-[1.5px] text-[#547083]">Access</p><h2 className="mt-1 text-xl font-extrabold">Reviewer Portal</h2><p className="mt-3 text-sm leading-6 text-[#687987]">You can access only properties assigned to your reviewer account. Admin dashboard and reviewer-management functions are not part of this portal.</p></section></div></div></main>;
 }
