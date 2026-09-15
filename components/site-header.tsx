@@ -67,6 +67,8 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
               <div className="border-b border-[#e8eef1] px-3 py-3"><p className="text-xs font-semibold uppercase tracking-[1.2px] text-[#7b8c97]">Signed in as</p><p className="mt-1 truncate text-sm font-extrabold text-[#102638]">{user.email}</p></div>
               <div className="py-2">
                 <a href="/my-properties" onClick={() => setOpen(false)} className={menuLink}><Building2 size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Properties</span></a>
+                <a href="/my-requirements" onClick={() => setOpen(false)} className={menuLink}><SlidersHorizontal size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Requirements</span></a>
+                <a href="/post-requirement" onClick={() => setOpen(false)} className={menuLink}><Plus size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>Post a Requirement</span></a>
                 <div className="mx-3 my-1 border-t border-[#edf1f3]" />
                 <a href="/profile" onClick={() => setOpen(false)} className={menuLink}><UserCircle size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>My Profile</span></a>
                 {(role === "admin" || role === "reviewer") && <><div className="mx-3 my-1 border-t border-[#edf1f3]" /><a href={staffHref} onClick={() => setOpen(false)} className={menuLink}><ShieldCheck size={17} className="shrink-0 text-[#087f73] transition group-hover:text-[#065f57]" /><span>{staffLabel}</span></a></>}
@@ -85,6 +87,8 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
         <div className="my-2 border-t border-[#e8eef1]" />
         {user ? <><button onClick={() => setOpen(!open)} className="flex cursor-pointer items-center justify-between rounded-xl border border-[#d7e3e8] px-3 py-3 text-left text-sm font-bold transition hover:border-[#0bb89b] hover:bg-[#f8fcfb]"><span className="flex items-center gap-2"><UserCircle size={18} className="text-[#087f73]" /> Welcome, {firstName}</span><ChevronDown size={17} className={`transition-transform ${open ? "rotate-180" : ""}`} /></button>{open && <div className="mt-1 grid gap-1 rounded-2xl border border-[#e4edef] bg-[#fbfdfd] p-2">
           <a href="/my-properties" className={mobileMenuLink}><Building2 size={17} className="text-[#087f73]" /> My Properties</a>
+          <a href="/my-requirements" className={mobileMenuLink}><SlidersHorizontal size={17} className="text-[#087f73]" /> My Requirements</a>
+          <a href="/post-requirement" className={mobileMenuLink}><Plus size={17} className="text-[#087f73]" /> Post a Requirement</a>
           <div className="mx-3 border-t border-[#e8eef1]" />
           <a href="/profile" className={mobileMenuLink}><UserCircle size={17} className="text-[#087f73]" /> My Profile</a>
           {(role === "admin" || role === "reviewer") && <><div className="mx-3 border-t border-[#e8eef1]" /><a href={staffHref} className={mobileMenuLink}><ShieldCheck size={17} className="text-[#087f73]" /> {staffLabel}</a></>}
