@@ -31,12 +31,27 @@ export default function PushNotificationButton() {
       if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
       const registration = await navigator.serviceWorker.register("/push-sw.js");
       const subscription = await registration.pushManager.getSubscription();
-      setEnabled(Boolean(subscription));
+      if (!subscription) {
+        setEnabled(false);
+        return;
+      }
+
+      // A browser subscription can exist even when it is currently associated
+      // with another UNLIVO account. Only show "On" when this account owns it.
+      const { data: savedSubscription } = await supabase
+        .from("push_subscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("endpoint", subscription.endpoint)
+        .maybeSingle();
+
+      setEnabled(Boolean(savedSubscription));
     };
 
-    void checkSubscription().catch(() => undefined);
+    void checkSubscription().catch(() => setEnabled(false));
   }, []);
 
   if (!supported || permission === "denied") {
@@ -75,6 +90,9 @@ export default function PushNotificationButton() {
         throw new Error("The browser did not return a complete push subscription.");
       }
 
+      // The endpoint identifies this browser subscription. If it was previously
+      // linked to another account, upsert moves the endpoint to the signed-in
+      // account so notifications are delivered to the correct UNLIVO user.
       const { error } = await supabase.from("push_subscriptions").upsert({
         user_id: user.id,
         endpoint: json.endpoint,
