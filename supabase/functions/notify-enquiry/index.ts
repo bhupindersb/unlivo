@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import webpush from "npm:web-push@3.6.7";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
@@ -52,20 +53,13 @@ Deno.serve(async (req: Request) => {
 
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const resendKey = Deno.env.get("RESEND_API_KEY");
-
-    console.log("notify-enquiry: configuration", {
-      hasServiceRoleKey: Boolean(serviceRoleKey),
-      hasResendKey: Boolean(resendKey),
-    });
+    const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+    const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+    const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:no-reply@auth.unlivo.com";
 
     if (!serviceRoleKey) {
       console.error("notify-enquiry: SUPABASE_SERVICE_ROLE_KEY is missing");
       return json({ error: "Server configuration error: Supabase service role key is missing" }, 500);
-    }
-
-    if (!resendKey) {
-      console.error("notify-enquiry: RESEND_API_KEY is missing");
-      return json({ ok: false, email_sent: false, error: "RESEND_API_KEY is not configured" }, 500);
     }
 
     const admin = createClient(
@@ -75,6 +69,7 @@ Deno.serve(async (req: Request) => {
 
     let recipientId = "";
     let senderId = "";
+    let propertyId = "";
     let propertyTitle = "";
     let messageText = "";
 
@@ -85,21 +80,12 @@ Deno.serve(async (req: Request) => {
         .eq("id", enquiry_id)
         .single();
 
-      if (error || !e) {
-        console.error("notify-enquiry: enquiry lookup failed", error?.message);
-        throw error || new Error("Enquiry not found");
-      }
-
-      if (e.buyer_id !== user.id) {
-        console.error("notify-enquiry: forbidden new enquiry notification", {
-          buyerId: e.buyer_id,
-          callerId: user.id,
-        });
-        return json({ error: "Forbidden" }, 403);
-      }
+      if (error || !e) throw error || new Error("Enquiry not found");
+      if (e.buyer_id !== user.id) return json({ error: "Forbidden" }, 403);
 
       recipientId = e.properties.listed_by;
       senderId = e.buyer_id;
+      propertyId = e.property_id;
       propertyTitle = e.properties.title;
       messageText = e.message || "The buyer sent an enquiry without a message.";
     } else if (event === "reply") {
@@ -109,131 +95,118 @@ Deno.serve(async (req: Request) => {
         .eq("id", message_id)
         .single();
 
-      if (error || !m) {
-        console.error("notify-enquiry: message lookup failed", error?.message);
-        throw error || new Error("Message not found");
-      }
-
-      if (m.sender_id !== user.id) {
-        console.error("notify-enquiry: forbidden reply notification", {
-          senderId: m.sender_id,
-          callerId: user.id,
-        });
-        return json({ error: "Forbidden" }, 403);
-      }
+      if (error || !m) throw error || new Error("Message not found");
+      if (m.sender_id !== user.id) return json({ error: "Forbidden" }, 403);
 
       recipientId = m.sender_id === m.enquiries.buyer_id
         ? m.enquiries.properties.listed_by
         : m.enquiries.buyer_id;
       senderId = m.sender_id;
+      propertyId = m.enquiries.property_id;
       propertyTitle = m.enquiries.properties.title;
       messageText = m.body;
     } else {
       return json({ error: "Unsupported event" }, 400);
     }
 
-    console.log("notify-enquiry: resolved participants", {
-      recipientId,
-      senderId,
-      propertyTitle,
-    });
-
     if (!recipientId || recipientId === senderId) {
-      console.warn("notify-enquiry: no valid recipient", { recipientId, senderId });
-      return json({ ok: true, email_sent: false, reason: "No valid recipient" });
+      return json({ ok: true, email_sent: false, push_sent: 0, reason: "No valid recipient" });
     }
 
-    const { data: recipient, error: recipientError } = await admin.auth.admin.getUserById(recipientId);
-    if (recipientError) {
-      console.error("notify-enquiry: recipient lookup failed", recipientError.message);
-      throw recipientError;
-    }
-
-    const { data: senderProfile, error: profileError } = await admin
+    const { data: senderProfile } = await admin
       .from("profiles")
       .select("full_name")
       .eq("id", senderId)
       .maybeSingle();
 
-    if (profileError) {
-      console.warn("notify-enquiry: sender profile lookup failed", profileError.message);
-    }
-
-    const recipientEmail = recipient.user?.email;
-    if (!recipientEmail) {
-      console.error("notify-enquiry: recipient has no email", { recipientId });
-      return json({ ok: false, email_sent: false, error: "Recipient has no email address" }, 500);
-    }
-
     const senderName = senderProfile?.full_name || "A UNLIVO user";
     const subject = event === "new_enquiry"
       ? `New enquiry about ${propertyTitle}`
       : `New reply about ${propertyTitle}`;
-    const heading = event === "new_enquiry"
-      ? "You have a new property enquiry"
-      : "You have a new enquiry reply";
 
-    const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com/my-properties" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open UNLIVO</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this property enquiry.</p></div>`;
+    let pushSent = 0;
+    let pushRemoved = 0;
 
-    const from = Deno.env.get("EMAIL_FROM") || "UNLIVO <no-reply@auth.unlivo.com>";
+    if (vapidPrivateKey && vapidPublicKey) {
+      webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
-    console.log("notify-enquiry: sending via Resend", {
-      from,
-      recipient: maskEmail(recipientEmail),
-      subject,
-    });
+      const { data: subscriptions, error: subscriptionError } = await admin
+        .from("push_subscriptions")
+        .select("id,endpoint,p256dh,auth")
+        .eq("user_id", recipientId);
 
-    const emailRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [recipientEmail],
-        subject,
-        html,
-      }),
-    });
+      if (subscriptionError) {
+        console.warn("notify-enquiry: push subscription lookup failed", subscriptionError.message);
+      } else {
+        const pushPayload = JSON.stringify({
+          title: event === "new_enquiry" ? "New UNLIVO enquiry" : "New enquiry reply",
+          body: `${senderName}: ${messageText}`,
+          url: `/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}`,
+          tag: `unlivo-enquiry-${enquiry_id || message_id}`,
+        });
 
-    const emailBody = await emailRes.text();
-
-    console.log("notify-enquiry: Resend response", {
-      status: emailRes.status,
-      ok: emailRes.ok,
-      body: emailBody,
-    });
-
-    if (!emailRes.ok) {
-      return json({
-        ok: false,
-        email_sent: false,
-        error: "Resend rejected the email",
-        resend_status: emailRes.status,
-        resend_response: emailBody,
-      }, 502);
+        for (const subscription of subscriptions || []) {
+          try {
+            await webpush.sendNotification({
+              endpoint: subscription.endpoint,
+              keys: { p256dh: subscription.p256dh, auth: subscription.auth },
+            }, pushPayload);
+            pushSent += 1;
+          } catch (error) {
+            const statusCode = (error as { statusCode?: number })?.statusCode;
+            console.warn("notify-enquiry: push delivery failed", { statusCode, endpoint: subscription.endpoint.slice(0, 40) });
+            if (statusCode === 404 || statusCode === 410) {
+              await admin.from("push_subscriptions").delete().eq("id", subscription.id);
+              pushRemoved += 1;
+            }
+          }
+        }
+      }
+    } else {
+      console.warn("notify-enquiry: VAPID secrets are not configured; skipping browser push");
     }
 
-    let resendData: Record<string, unknown> = {};
-    try {
-      resendData = JSON.parse(emailBody);
-    } catch {
-      // Keep the raw response out of the success payload if it is not JSON.
+    let emailSent = false;
+    let resendId: unknown = null;
+
+    if (resendKey) {
+      const { data: recipient, error: recipientError } = await admin.auth.admin.getUserById(recipientId);
+      if (recipientError) throw recipientError;
+
+      const recipientEmail = recipient.user?.email;
+      if (recipientEmail) {
+        const heading = event === "new_enquiry"
+          ? "You have a new property enquiry"
+          : "You have a new enquiry reply";
+        const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open Enquiry Inbox</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this property enquiry.</p></div>`;
+        const from = Deno.env.get("EMAIL_FROM") || "UNLIVO <no-reply@auth.unlivo.com>";
+
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ from, to: [recipientEmail], subject, html }),
+        });
+        const emailBody = await emailRes.text();
+
+        if (emailRes.ok) {
+          emailSent = true;
+          try { resendId = JSON.parse(emailBody).id || null; } catch { resendId = null; }
+          console.log("notify-enquiry: email sent", { resendId, recipient: maskEmail(recipientEmail) });
+        } else {
+          console.error("notify-enquiry: Resend rejected email", emailRes.status, emailBody);
+        }
+      }
+    } else {
+      console.warn("notify-enquiry: RESEND_API_KEY is missing; skipping email");
     }
 
-    console.log("notify-enquiry: email sent successfully", {
-      resendId: resendData.id || null,
-    });
-
-    return json({
-      ok: true,
-      email_sent: true,
-      resend_id: resendData.id || null,
-    });
+    return json({ ok: true, email_sent: emailSent, push_sent: pushSent, push_removed: pushRemoved, resend_id: resendId });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Notification failed";
     console.error("notify-enquiry: unhandled error", message);
-    return json({ error: message, email_sent: false }, 500);
+    return json({ error: message, email_sent: false, push_sent: 0 }, 500);
   }
 });
