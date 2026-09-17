@@ -39,8 +39,6 @@ export default function PushNotificationButton() {
         return;
       }
 
-      // A browser subscription can exist even when it is currently associated
-      // with another UNLIVO account. Only show "On" when this account owns it.
       const { data: savedSubscription } = await supabase
         .from("push_subscriptions")
         .select("id")
@@ -77,6 +75,8 @@ export default function PushNotificationButton() {
       }
 
       const registration = await navigator.serviceWorker.register("/push-sw.js");
+      await navigator.serviceWorker.ready;
+
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
@@ -90,22 +90,41 @@ export default function PushNotificationButton() {
         throw new Error("The browser did not return a complete push subscription.");
       }
 
-      // The endpoint identifies this browser subscription. If it was previously
-      // linked to another account, upsert moves the endpoint to the signed-in
-      // account so notifications are delivered to the correct UNLIVO user.
-      const { error } = await supabase.from("push_subscriptions").upsert({
-        user_id: user.id,
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-        user_agent: navigator.userAgent,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "endpoint" });
+      // Registration is handled by a protected Edge Function using the service
+      // role. This is necessary when the same browser subscription was previously
+      // associated with a different UNLIVO account; normal RLS correctly blocks
+      // one user from updating another user's subscription row.
+      const { data, error } = await supabase.functions.invoke("register-push-subscription", {
+        body: {
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+          user_agent: navigator.userAgent,
+        },
+      });
 
-      if (error) throw error;
+      if (error) {
+        let detail = error.message || "Could not register the browser subscription.";
+        try {
+          const context = (error as { context?: Response }).context;
+          if (context) {
+            const body = await context.clone().json();
+            if (typeof body?.error === "string") detail = body.error;
+          }
+        } catch {
+          // Keep the original error message when the function response is not JSON.
+        }
+        throw new Error(detail);
+      }
+
+      if (!data?.ok) {
+        throw new Error(typeof data?.error === "string" ? data.error : "Could not register the browser subscription.");
+      }
+
       setEnabled(true);
       setMessage("Browser notifications enabled.");
     } catch (error) {
+      console.error("UNLIVO browser notification setup failed", error);
       setMessage(error instanceof Error ? error.message : "Could not enable notifications.");
     } finally {
       setBusy(false);
@@ -128,6 +147,7 @@ export default function PushNotificationButton() {
       setEnabled(false);
       setMessage("Browser notifications disabled.");
     } catch (error) {
+      console.error("UNLIVO browser notification disable failed", error);
       setMessage(error instanceof Error ? error.message : "Could not disable notifications.");
     } finally {
       setBusy(false);
