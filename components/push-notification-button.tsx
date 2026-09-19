@@ -27,6 +27,33 @@ export default function PushNotificationButton() {
     if (!available) return;
     setPermission(Notification.permission);
 
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "UNLIVO_PUSH_DIAGNOSTIC") return;
+
+      const diagnostic = event.data;
+      console.info("UNLIVO real push diagnostic", diagnostic);
+
+      const time = diagnostic.receivedAt
+        ? new Date(diagnostic.receivedAt).toLocaleTimeString()
+        : "unknown time";
+
+      if (diagnostic.stage === "push_received" || diagnostic.stage === "payload_decoded" || diagnostic.stage === "payload_text_fallback") {
+        setMessage(
+          `REAL PUSH RECEIVED by service worker v${diagnostic.version || "unknown"} at ${time}. Stage: ${diagnostic.stage}.`,
+        );
+      } else if (diagnostic.stage === "showNotification_succeeded") {
+        setMessage(
+          `REAL PUSH RECEIVED and notification created by service worker v${diagnostic.version || "unknown"} at ${time}.`,
+        );
+      } else if (diagnostic.stage === "showNotification_failed") {
+        setMessage(
+          `REAL PUSH reached service worker, but showNotification failed: ${diagnostic.error || "Unknown error"}`,
+        );
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", handleServiceWorkerMessage);
+
     const checkSubscription = async () => {
       if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
@@ -50,6 +77,10 @@ export default function PushNotificationButton() {
     };
 
     void checkSubscription().catch(() => setEnabled(false));
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
+    };
   }, []);
 
   if (!supported || permission === "denied") return null;
