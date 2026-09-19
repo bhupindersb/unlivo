@@ -128,7 +128,9 @@ export default function PushNotificationButton() {
     setBusy(true);
     setMessage("");
     try {
-      if (Notification.permission !== "granted") throw new Error("Please enable browser notifications first.");
+      if (Notification.permission !== "granted") {
+        throw new Error("Please enable browser notifications first.");
+      }
 
       const registration = await navigator.serviceWorker.register("/push-sw.js");
       await navigator.serviceWorker.ready;
@@ -137,8 +139,25 @@ export default function PushNotificationButton() {
         throw new Error("UNLIVO notification service worker is not active yet. Please refresh the page and try again.");
       }
 
-      registration.active.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
-      setMessage("Test notification requested. Check your macOS notification area.");
+      const channel = new MessageChannel();
+      const result = await new Promise<{ ok: boolean; stage?: string; error?: string }>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          reject(new Error("The UNLIVO service worker did not respond within 5 seconds. Please refresh the page and try again."));
+        }, 5000);
+
+        channel.port1.onmessage = (event) => {
+          window.clearTimeout(timeout);
+          resolve(event.data);
+        };
+
+        registration.active?.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" }, [channel.port2]);
+      });
+
+      if (!result?.ok) {
+        throw new Error(`Service worker notification failed${result?.stage ? ` at ${result.stage}` : ""}: ${result?.error || "Unknown error"}`);
+      }
+
+      setMessage("Service worker successfully created the notification. If you still cannot see it, we will check Chrome/macOS notification settings next.");
     } catch (error) {
       console.error("UNLIVO test notification failed", error);
       setMessage(error instanceof Error ? error.message : "Test notification failed.");
