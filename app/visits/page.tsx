@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, Check, Clock3, Home, MessageCircle, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Check, Clock3, Home, X } from "lucide-react";
 import SiteHeader from "../../components/site-header";
 import SiteFooter from "../../components/site-footer";
 import { supabase } from "../../lib/supabase";
@@ -77,17 +77,26 @@ export default function VisitsPage() {
 
     const propertyIds = Array.from(new Set(rows.map(x => x.property_id)));
     const profileIds = Array.from(new Set(rows.flatMap(x => [x.requester_id, x.owner_id])));
-    const [p, pr] = await Promise.all([
-      propertyIds.length
-        ? supabase.from("properties").select("id,title,city,locality,price,rent_monthly,purpose").in("id", propertyIds)
-        : Promise.resolve({ data: [] as Property[] }),
-      profileIds.length
-        ? supabase.from("profiles").select("id,full_name").in("id", profileIds)
-        : Promise.resolve({ data: [] as Profile[] }),
-    ]);
 
-    setProperties((p.data || []) as Property[]);
-    setProfiles((pr.data || []) as Profile[]);
+    if (propertyIds.length) {
+      const p = await supabase
+        .from("properties")
+        .select("id,title,city,locality,price,rent_monthly,purpose")
+        .in("id", propertyIds);
+      setProperties((p.data || []) as Property[]);
+    } else {
+      setProperties([]);
+    }
+
+    if (profileIds.length) {
+      const pr = await supabase
+        .from("profiles")
+        .select("id,full_name")
+        .in("id", profileIds);
+      setProfiles((pr.data || []) as Profile[]);
+    } else {
+      setProfiles([]);
+    }
     setLoading(false);
   };
 
@@ -110,10 +119,15 @@ export default function VisitsPage() {
     return () => { void supabase?.removeChannel(channel); };
   }, [userId]);
 
-  const propertyMap = useMemo(() => new Map(properties.map(p => [p.id, p])), [properties]);
-  const profileMap = useMemo(() => new Map(profiles.map(p => [p.id, p])), [profiles]);
-
-  const updateVisit = async (visit: Visit, patch: Partial<Visit>) => {
+  const updateVisit = async (
+    visit: Visit,
+    patch: {
+      status?: string;
+      proposed_for?: string | null;
+      requested_for?: string;
+      owner_note?: string | null;
+    },
+  ) => {
     if (!supabase) return;
     setBusy(visit.id);
     setError("");
@@ -162,9 +176,9 @@ export default function VisitsPage() {
               <p className="mt-2 text-sm text-[#687987]">When you request a visit, it will appear here.</p>
             </div>
           ) : visits.map(visit => {
-            const property = propertyMap.get(visit.property_id);
+            const property = properties.find(p => p.id === visit.property_id);
             const owner = visit.owner_id === userId;
-            const other = owner ? profileMap.get(visit.requester_id)?.full_name || "Buyer" : profileMap.get(visit.owner_id)?.full_name || "Property owner";
+            const other = owner ? profiles.find(p => p.id === visit.requester_id)?.full_name || "Buyer" : profiles.find(p => p.id === visit.owner_id)?.full_name || "Property owner";
             const active = ["requested","proposed","confirmed"].includes(visit.status);
             return (
               <article key={visit.id} data-visit-id={visit.id} className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${highlightedVisit === visit.id ? "border-[#0bb89b] ring-2 ring-[#0bb89b]/20" : "border-[#dfe9ed]"}`} >
