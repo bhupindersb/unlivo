@@ -136,7 +136,7 @@ export default function PushNotificationButton() {
       // the service worker so we can separate browser/OS notification issues from
       // service-worker messaging issues.
       try {
-        const directNotification = new Notification("UNLIVO Direct Test", {
+        const directNotification = new window.Notification("UNLIVO Direct Test", {
           body: "This notification bypasses the service worker.",
           tag: "unlivo-direct-test",
         });
@@ -161,7 +161,8 @@ export default function PushNotificationButton() {
 
       console.info("UNLIVO notification service worker diagnostic", diagnostic);
 
-      if (!readyRegistration.active) {
+      const activeWorker = readyRegistration.active;
+      if (!activeWorker) {
         throw new Error("Direct notification worked, but the UNLIVO service worker is not active.");
       }
 
@@ -186,7 +187,7 @@ export default function PushNotificationButton() {
 
         // Prefer the worker controlling this page. If the page is not controlled
         // yet, fall back to the active registration worker.
-        const target = navigator.serviceWorker.controller || readyRegistration.active;
+        const target = navigator.serviceWorker.controller || activeWorker;
         target.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
       });
 
