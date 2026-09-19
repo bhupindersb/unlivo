@@ -115,6 +115,11 @@ export default function VisitsPage() {
     }
 
     await loadVisits();
+
+    void supabase.functions.invoke("notify-enquiry", {
+      body: { event: "site_visit_update", visit_id: id },
+    });
+
     setBusyId("");
   }
 
