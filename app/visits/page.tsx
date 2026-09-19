@@ -1,22 +1,143 @@
 "use client";
 
-import { CalendarDays, Check, Clock3, Home, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Clock3, Home } from "lucide-react";
 import SiteHeader from "../../components/site-header";
 import SiteFooter from "../../components/site-footer";
+import { supabase } from "../../lib/supabase";
 
-const demoVisits = [
-  {
-    id: "demo-1",
-    title: "Sample Property",
-    location: "Property location",
-    role: "Requested",
-    status: "Requested",
-    person: "Property owner",
-    requested: "Your requested visit time will appear here.",
-  },
-];
+type Visit = {
+  id: string;
+  property_id: string;
+  requester_id: string;
+  owner_id: string;
+  requested_for: string;
+  proposed_for: string | null;
+  status: string;
+  requester_note: string | null;
+  owner_note: string | null;
+};
+
+type Property = {
+  id: string;
+  title: string;
+  city: string | null;
+  state: string | null;
+};
+
+type Profile = {
+  id: string;
+  full_name: string | null;
+};
 
 export default function VisitsPage() {
+  const [visits, setVisits] = useState<Visit[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadVisits() {
+      setLoading(true);
+      setMessage("");
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        if (active) {
+          setMessage("Please sign in to view your site visits.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("site_visits")
+        .select(
+          "id, property_id, requester_id, owner_id, requested_for, proposed_for, status, requester_note, owner_note"
+        )
+        .or(`requester_id.eq.${user.id},owner_id.eq.${user.id}`)
+        .order("requested_for", { ascending: false });
+
+      if (error) {
+        if (active) {
+          setMessage(error.message);
+          setLoading(false);
+        }
+        return;
+      }
+
+      const rows = (data || []) as Visit[];
+      const propertyIds = Array.from(
+        new Set(rows.map((row) => row.property_id))
+      );
+      const profileIds = Array.from(
+        new Set(
+          rows.flatMap((row) => [row.requester_id, row.owner_id])
+        )
+      );
+
+      let propertyRows: Property[] = [];
+      let profileRows: Profile[] = [];
+
+      if (propertyIds.length) {
+        const result = await supabase
+          .from("properties")
+          .select("id, title, city, state")
+          .in("id", propertyIds);
+
+        if (result.data) {
+          propertyRows = result.data as Property[];
+        }
+      }
+
+      if (profileIds.length) {
+        const result = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", profileIds);
+
+        if (result.data) {
+          profileRows = result.data as Profile[];
+        }
+      }
+
+      if (active) {
+        setVisits(rows);
+        setProperties(propertyRows);
+        setProfiles(profileRows);
+        setLoading(false);
+      }
+    }
+
+    void loadVisits();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  function propertyFor(id: string) {
+    return properties.find((property) => property.id === id);
+  }
+
+  function profileFor(id: string) {
+    return profiles.find((profile) => profile.id === id);
+  }
+
+  function formatDate(value: string | null) {
+    if (!value) return "Not proposed yet";
+    return new Date(value).toLocaleString([], {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  }
+
   return (
     <main className="min-h-screen bg-[#f7fafb] text-[#102638]">
       <SiteHeader />
@@ -39,116 +160,118 @@ export default function VisitsPage() {
           </a>
         </div>
 
-        <div className="mt-8 space-y-5">
-          {demoVisits.map((visit) => (
-            <article
-              key={visit.id}
-              className="overflow-hidden rounded-3xl border border-[#dfe9ed] bg-white shadow-sm"
-            >
-              <div className="border-b border-[#e8eef1] p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-[#eef5ff] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#315b91]">
-                        {visit.role}
-                      </span>
-                      <span className="rounded-full bg-[#f1f5f7] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#60737e]">
-                        {visit.status}
-                      </span>
-                    </div>
-                    <h2 className="mt-3 text-xl font-extrabold">{visit.title}</h2>
-                    <p className="mt-1 text-sm text-[#687987]">{visit.location}</p>
-                  </div>
-                  <a
-                    href="#"
-                    className="inline-flex items-center gap-2 rounded-xl border border-[#cbdde3] px-4 py-2.5 text-sm font-bold text-[#123b53]"
-                  >
-                    <Home size={16} /> View property
-                  </a>
-                </div>
-              </div>
-
-              <div className="grid gap-5 p-6 lg:grid-cols-2">
-                <div className="space-y-3 text-sm">
-                  <div className="rounded-2xl bg-[#f7fafb] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[1px] text-[#7b8c97]">
-                      Property owner
-                    </p>
-                    <p className="mt-1 font-extrabold">{visit.person}</p>
-                  </div>
-                  <div className="rounded-2xl bg-[#f7fafb] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[1px] text-[#7b8c97]">
-                      Requested time
-                    </p>
-                    <p className="mt-1 font-extrabold">{visit.requested}</p>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[#dfe9ed] p-5">
-                  <p className="text-sm font-extrabold">Respond to this request</p>
-                  <p className="mt-2 text-sm leading-6 text-[#687987]">
-                    Once a visit request is loaded from Supabase, the owner will
-                    be able to confirm, decline, or propose another time here.
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      disabled
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#123b53] px-4 py-2.5 text-sm font-bold text-white opacity-50"
-                    >
-                      <Check size={16} /> Confirm
-                    </button>
-                    <button
-                      type="button"
-                      disabled
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#efcccc] bg-[#fff7f7] px-4 py-2.5 text-sm font-bold text-[#8b4b4b] opacity-50"
-                    >
-                      <X size={16} /> Decline
-                    </button>
-                  </div>
-
-                  <div className="mt-5 border-t border-[#e8eef1] pt-5">
-                    <p className="text-sm font-extrabold">Propose another time</p>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <input
-                        type="date"
-                        disabled
-                        className="rounded-xl border border-[#d7e3e8] px-3 py-2.5 text-sm opacity-50"
-                      />
-                      <select
-                        disabled
-                        defaultValue="09:00"
-                        className="rounded-xl border border-[#d7e3e8] bg-white px-3 py-2.5 text-sm opacity-50"
-                      >
-                        <option value="09:00">9:00 AM</option>
-                        <option value="11:00">11:00 AM</option>
-                        <option value="14:00">2:00 PM</option>
-                        <option value="16:00">4:00 PM</option>
-                        <option value="18:00">6:00 PM</option>
-                      </select>
-                    </div>
-                    <button
-                      type="button"
-                      disabled
-                      className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[#cbdde3] px-4 py-2.5 text-sm font-bold text-[#123b53] opacity-50"
-                    >
-                      <Clock3 size={16} /> Propose new time
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
-
-          <div className="rounded-3xl border border-[#dfe9ed] bg-white p-8 text-center shadow-sm">
-            <CalendarDays className="mx-auto text-[#0bb89b]" size={38} />
-            <h2 className="mt-4 text-xl font-extrabold">Visit workflow ready</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#687987]">
-              This screen is now ready for the live Supabase visit data in the
-              next step.
+        {loading ? (
+          <div className="mt-8 rounded-3xl border border-[#dfe9ed] bg-white p-10 text-center shadow-sm">
+            <p className="text-sm font-bold text-[#687987]">
+              Loading your site visits...
             </p>
           </div>
-        </div>
+        ) : message ? (
+          <div className="mt-8 rounded-3xl border border-[#efcccc] bg-white p-10 text-center shadow-sm">
+            <p className="text-sm font-bold text-[#8b4b4b]">{message}</p>
+          </div>
+        ) : visits.length === 0 ? (
+          <div className="mt-8 rounded-3xl border border-[#dfe9ed] bg-white p-10 text-center shadow-sm">
+            <CalendarDays className="mx-auto text-[#0bb89b]" size={38} />
+            <h2 className="mt-4 text-xl font-extrabold">No site visits yet</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#687987]">
+              When you request a property visit, it will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 space-y-5">
+            {visits.map((visit) => {
+              const property = propertyFor(visit.property_id);
+              const requester = profileFor(visit.requester_id);
+              const owner = profileFor(visit.owner_id);
+
+              return (
+                <article
+                  key={visit.id}
+                  className="overflow-hidden rounded-3xl border border-[#dfe9ed] bg-white shadow-sm"
+                >
+                  <div className="border-b border-[#e8eef1] p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-[#eef5ff] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#315b91]">
+                            {visit.status}
+                          </span>
+                          <span className="rounded-full bg-[#f1f5f7] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#60737e]">
+                            {requester?.id === visit.requester_id ? "Buyer" : "Owner"}
+                          </span>
+                        </div>
+                        <h2 className="mt-3 text-xl font-extrabold">
+                          {property?.title || "Property"}
+                        </h2>
+                        <p className="mt-1 text-sm text-[#687987]">
+                          {[property?.city, property?.state].filter(Boolean).join(", ") ||
+                            "Property location"}
+                        </p>
+                      </div>
+                      <a
+                        href={`/properties/${visit.property_id}`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#cbdde3] px-4 py-2.5 text-sm font-bold text-[#123b53]"
+                      >
+                        <Home size={16} /> View property
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 p-6 lg:grid-cols-2">
+                    <div className="space-y-3 text-sm">
+                      <div className="rounded-2xl bg-[#f7fafb] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[1px] text-[#7b8c97]">
+                          {visit.requester_id === requester?.id
+                            ? "Property owner"
+                            : "Visitor"}
+                        </p>
+                        <p className="mt-1 font-extrabold">
+                          {visit.requester_id === requester?.id
+                            ? owner?.full_name || "Property owner"
+                            : requester?.full_name || "Visitor"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl bg-[#f7fafb] p-4">
+                        <p className="text-xs font-bold uppercase tracking-[1px] text-[#7b8c97]">
+                          Requested time
+                        </p>
+                        <p className="mt-1 flex items-center gap-2 font-extrabold">
+                          <Clock3 size={15} />
+                          {formatDate(visit.requested_for)}
+                        </p>
+                      </div>
+
+                      {visit.proposed_for ? (
+                        <div className="rounded-2xl bg-[#eefaf7] p-4">
+                          <p className="text-xs font-bold uppercase tracking-[1px] text-[#52786f]">
+                            Proposed time
+                          </p>
+                          <p className="mt-1 font-extrabold text-[#155b50]">
+                            {formatDate(visit.proposed_for)}
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-2xl border border-[#dfe9ed] p-5">
+                      <p className="text-sm font-extrabold">Visit request</p>
+                      <p className="mt-2 text-sm leading-6 text-[#687987]">
+                        {visit.requester_note ||
+                          visit.owner_note ||
+                          "No additional notes were added."}
+                      </p>
+                      <div className="mt-5 rounded-xl bg-[#f7fafb] px-4 py-3 text-xs font-bold uppercase tracking-[1px] text-[#60737e]">
+                        Live Supabase data
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </section>
       <SiteFooter />
     </main>
