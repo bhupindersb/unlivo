@@ -1,3 +1,19 @@
+const UNLIVO_SW_VERSION = "2026-09-19-02";
+
+self.addEventListener("install", (event) => {
+  console.log("UNLIVO service worker installing", UNLIVO_SW_VERSION);
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    (async () => {
+      await self.clients.claim();
+      console.log("UNLIVO service worker activated", UNLIVO_SW_VERSION);
+    })(),
+  );
+});
+
 self.addEventListener("push", (event) => {
   event.waitUntil(
     (async () => {
@@ -11,7 +27,11 @@ self.addEventListener("push", (event) => {
         };
       }
 
-      await showUnlivoNotification(data);
+      try {
+        await showUnlivoNotification(data);
+      } catch (error) {
+        console.error("UNLIVO push notification failed", error);
+      }
     })(),
   );
 });
@@ -19,12 +39,10 @@ self.addEventListener("push", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "UNLIVO_TEST_NOTIFICATION") return;
 
-  const reply = (payload) => {
-    if (event.ports?.[0]) event.ports[0].postMessage(payload);
-  };
-
   event.waitUntil(
     (async () => {
+      let result;
+
       try {
         await showUnlivoNotification({
           title: "UNLIVO Test Notification",
@@ -33,13 +51,24 @@ self.addEventListener("message", (event) => {
           tag: "unlivo-local-test",
         });
 
-        reply({ ok: true, stage: "showNotification" });
+        result = {
+          type: "UNLIVO_TEST_NOTIFICATION_RESULT",
+          ok: true,
+          stage: "showNotification",
+          version: UNLIVO_SW_VERSION,
+        };
       } catch (error) {
-        reply({
+        result = {
+          type: "UNLIVO_TEST_NOTIFICATION_RESULT",
           ok: false,
           stage: "showNotification",
           error: error instanceof Error ? error.message : String(error),
-        });
+          version: UNLIVO_SW_VERSION,
+        };
+      }
+
+      if (event.source && "postMessage" in event.source) {
+        event.source.postMessage(result);
       }
     })(),
   );
