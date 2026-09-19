@@ -82,6 +82,21 @@ export default function VisitsPage() {
 
   useEffect(() => {
     void loadVisits();
+
+    const channel = supabase
+      .channel("site-visits-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_visits" },
+        () => {
+          void loadVisits();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, []);
 
   async function updateVisit(id: string, status: string, proposedFor?: string | null) {
