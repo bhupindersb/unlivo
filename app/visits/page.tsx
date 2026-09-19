@@ -29,6 +29,7 @@ export default function VisitsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState("");
+  const [highlightedVisit, setHighlightedVisit] = useState("");
   const [proposalDate, setProposalDate] = useState<Record<string, string>>({});
   const [proposalTime, setProposalTime] = useState<Record<string, string>>({});
 
@@ -98,6 +99,16 @@ export default function VisitsPage() {
       void supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    const visitId = new URLSearchParams(window.location.search).get("visit") || "";
+    if (!visitId || !visits.some((visit) => visit.id === visitId)) return;
+    setHighlightedVisit(visitId);
+    window.setTimeout(() => {
+      const element = document.getElementById("visit-" + visitId);
+      if (element) element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }, [visits]);
 
   async function updateVisit(id: string, status: string, proposedFor?: string | null) {
     setBusyId(id);
@@ -174,7 +185,7 @@ export default function VisitsPage() {
               const canCancel = (isRequester || isOwner) && ["requested", "proposed", "confirmed"].includes(visit.status);
 
               return (
-                <article key={visit.id} className="overflow-hidden rounded-3xl border border-[#dfe9ed] bg-white shadow-sm">
+                <article id={"visit-" + visit.id} key={visit.id} className={"overflow-hidden rounded-3xl border bg-white shadow-sm transition-shadow " + (highlightedVisit === visit.id ? "border-[#0bb89b] ring-2 ring-[#0bb89b]/20" : "border-[#dfe9ed]")}>
                   <div className="border-b border-[#e8eef1] p-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
