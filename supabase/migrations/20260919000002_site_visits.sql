@@ -64,3 +64,29 @@ begin
     alter publication supabase_realtime add table public.site_visits;
   end if;
 end $$;
+
+create or replace function public.prevent_site_visit_identity_change()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.property_id <> old.property_id
+     or new.requester_id <> old.requester_id
+     or new.owner_id <> old.owner_id
+     or coalesce(new.enquiry_id::text,'') <> coalesce(old.enquiry_id::text,'') then
+    raise exception 'Site visit participants and property cannot be changed';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists site_visits_prevent_identity_change on public.site_visits;
+create trigger site_visits_prevent_identity_change
+before update on public.site_visits
+for each row execute function public.prevent_site_visit_identity_change();
+
+drop trigger if exists site_visits_set_updated_at on public.site_visits;
+create trigger site_visits_set_updated_at
+before update on public.site_visits
+for each row execute function public.set_updated_at();
