@@ -183,15 +183,25 @@ export default function VisitsPage() {
               const canOwnerAct = isOwner && (visit.status === "requested" || visit.status === "proposed");
               const canBuyerAct = isRequester && visit.status === "proposed";
               const canCancel = (isRequester || isOwner) && ["requested", "proposed", "confirmed"].includes(visit.status);
+              const statusStyles: Record<string, string> = {
+                requested: "border-[#f3d49b] bg-[#fff8e8] text-[#9a6500]",
+                proposed: "border-[#b9d8f3] bg-[#eef7ff] text-[#28608f]",
+                confirmed: "border-[#a9dfc7] bg-[#eafaf2] text-[#137a4f]",
+                declined: "border-[#efcccc] bg-[#fff2f2] text-[#a24646]",
+                cancelled: "border-[#d7e0e5] bg-[#f2f5f7] text-[#60737e]",
+                completed: "border-[#b9d8f3] bg-[#eef7ff] text-[#28608f]",
+              };
 
               return (
                 <article id={"visit-" + visit.id} key={visit.id} className={"overflow-hidden rounded-3xl border bg-white shadow-sm transition-shadow " + (highlightedVisit === visit.id ? "border-[#0bb89b] ring-2 ring-[#0bb89b]/20" : "border-[#dfe9ed]")}>
                   <div className="border-b border-[#e8eef1] p-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-[#eef5ff] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#315b91]">{visit.status}</span>
-                          <span className="rounded-full bg-[#f1f5f7] px-3 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#60737e]">{isOwner ? "Owner" : "Buyer"}</span>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className={"inline-flex items-center rounded-full border px-4 py-2 text-xs font-extrabold uppercase tracking-[1.2px] shadow-sm " + (statusStyles[visit.status] || "border-[#d7e0e5] bg-[#f2f5f7] text-[#60737e]")}>
+                            {visit.status}
+                          </span>
+                          <span className="rounded-full bg-[#f1f5f7] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-[#60737e]">{isOwner ? "Owner" : "Buyer"}</span>
                         </div>
                         <h2 className="mt-3 text-xl font-extrabold">{property?.title || "Property"}</h2>
                         <p className="mt-1 text-sm text-[#687987]">{[property?.city, property?.state].filter(Boolean).join(", ") || "Property location"}</p>
