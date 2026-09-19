@@ -29,10 +29,7 @@ const statusLabel = (s: string) => s.replaceAll("_", " ").replace(/\b\w/g, c => 
 
 function formatDate(value: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  return new Date(value).toLocaleString("en-IN");
 }
 
 function formatPrice(p: Property) {
