@@ -44,10 +44,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const { event, enquiry_id, message_id } = await req.json();
-    console.log("notify-enquiry: event", { event, enquiry_id, message_id });
+    const { event, enquiry_id, message_id, visit_id } = await req.json();
+    console.log("notify-enquiry: event", { event, enquiry_id, message_id, visit_id });
 
-    if (!event || (!enquiry_id && !message_id)) {
+    if (!event || (!enquiry_id && !message_id && !visit_id)) {
       return json({ error: "Missing notification data" }, 400);
     }
 
@@ -105,6 +105,28 @@ Deno.serve(async (req: Request) => {
       propertyId = m.enquiries.property_id;
       propertyTitle = m.enquiries.properties.title;
       messageText = m.body;
+    } else if (event === "new_site_visit" || event === "site_visit_update") {
+      const { data: v, error } = await admin
+        .from("site_visits")
+        .select("id,requester_id,owner_id,property_id,requested_for,proposed_for,status,requester_note,owner_note,properties(title)")
+        .eq("id", visit_id)
+        .single();
+
+      if (error || !v) throw error || new Error("Site visit not found");
+      if (event === "new_site_visit" && v.requester_id !== user.id) return json({ error: "Forbidden" }, 403);
+      if (event === "site_visit_update" && user.id !== v.requester_id && user.id !== v.owner_id) return json({ error: "Forbidden" }, 403);
+
+      recipientId = user.id === v.requester_id ? v.owner_id : v.requester_id;
+      senderId = user.id;
+      propertyId = v.property_id;
+      propertyTitle = v.properties.title;
+      const visitTime = new Date(v.proposed_for || v.requested_for).toLocaleString("en-IN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+      messageText = event === "new_site_visit"
+        ? (v.requester_note || `A buyer requested a site visit for ${visitTime}.`)
+        : (v.owner_note || v.requester_note || `Site visit status: ${v.status.replaceAll("_", " ")}. Scheduled time: ${visitTime}.`);
     } else {
       return json({ error: "Unsupported event" }, 400);
     }
@@ -122,7 +144,11 @@ Deno.serve(async (req: Request) => {
     const senderName = senderProfile?.full_name || "A UNLIVO user";
     const subject = event === "new_enquiry"
       ? `New enquiry about ${propertyTitle}`
-      : `New reply about ${propertyTitle}`;
+      : event === "reply"
+        ? `New reply about ${propertyTitle}`
+        : event === "new_site_visit"
+          ? `New site visit request for ${propertyTitle}`
+          : `Site visit update for ${propertyTitle}`;
 
     let pushSent = 0;
     let pushRemoved = 0;
@@ -138,11 +164,23 @@ Deno.serve(async (req: Request) => {
       if (subscriptionError) {
         console.warn("notify-enquiry: push subscription lookup failed", subscriptionError.message);
       } else {
+        const notificationTitle =
+          event === "new_enquiry"
+            ? `New enquiry for ${propertyTitle}`
+            : event === "reply"
+              ? `New reply for ${propertyTitle}`
+              : event === "new_site_visit"
+                ? `New visit request for ${propertyTitle}`
+                : `Site visit update for ${propertyTitle}`;
+        const notificationUrl =
+          event === "new_enquiry" || event === "reply"
+            ? `/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}`
+            : `/visits?visit=${encodeURIComponent(visit_id)}`;
         const pushPayload = JSON.stringify({
-          title: event === "new_enquiry" ? "New UNLIVO enquiry" : "New enquiry reply",
-          body: `${senderName}: ${messageText}`,
-          url: `/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}`,
-          tag: `unlivo-enquiry-${enquiry_id || message_id}`,
+          title: notificationTitle,
+          body: `${senderName}: ${messageText}`.slice(0, 220),
+          url: notificationUrl,
+          tag: `unlivo-${event}-${enquiry_id || message_id || visit_id}`,
         });
 
         for (const subscription of subscriptions || []) {
@@ -177,8 +215,12 @@ Deno.serve(async (req: Request) => {
       if (recipientEmail) {
         const heading = event === "new_enquiry"
           ? "You have a new property enquiry"
-          : "You have a new enquiry reply";
-        const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open Enquiry Inbox</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this property enquiry.</p></div>`;
+          : event === "reply"
+            ? "You have a new enquiry reply"
+            : event === "new_site_visit"
+              ? "You have a new site visit request"
+              : "Your site visit has been updated";
+        const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href={`https://www.unlivo.com/${event === "new_enquiry" || event === "reply" ? `enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}` : `visits?visit=${encodeURIComponent(visit_id)}`}`} style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open Enquiry Inbox</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this property enquiry.</p></div>`;
         const from = Deno.env.get("EMAIL_FROM") || "UNLIVO <no-reply@auth.unlivo.com>";
 
         const emailRes = await fetch("https://api.resend.com/emails", {
