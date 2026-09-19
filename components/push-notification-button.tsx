@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, Send } from "lucide-react";
+import { Bell, BellOff, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 
 const VAPID_PUBLIC_KEY = "BE30ODlsY9Du80I4oexOJUVLHgDjetPglCDhclO15WEK9s8sYO4J5n54s92NfQl-ftWh3yYrvV28b3zULmeZAmE";
@@ -52,9 +52,7 @@ export default function PushNotificationButton() {
     void checkSubscription().catch(() => setEnabled(false));
   }, []);
 
-  if (!supported || permission === "denied") {
-    return null;
-  }
+  if (!supported || permission === "denied") return null;
 
   const enableNotifications = async () => {
     if (!supabase || busy) return;
@@ -107,9 +105,7 @@ export default function PushNotificationButton() {
             const body = await context.clone().json();
             if (typeof body?.error === "string") detail = body.error;
           }
-        } catch {
-          // Keep the original error message when the function response is not JSON.
-        }
+        } catch {}
         throw new Error(detail);
       }
 
@@ -132,9 +128,7 @@ export default function PushNotificationButton() {
     setBusy(true);
     setMessage("");
     try {
-      if (Notification.permission !== "granted") {
-        throw new Error("Please enable browser notifications first.");
-      }
+      if (Notification.permission !== "granted") throw new Error("Please enable browser notifications first.");
 
       const registration = await navigator.serviceWorker.register("/push-sw.js");
       await navigator.serviceWorker.ready;
@@ -143,15 +137,8 @@ export default function PushNotificationButton() {
         throw new Error("UNLIVO notification service worker is not active yet. Please refresh the page and try again.");
       }
 
-      await registration.showNotification("UNLIVO Test Notification", {
-        body: "If you can see this, browser notifications are working correctly.",
-        tag: "unlivo-local-test",
-        renotify: true,
-        requireInteraction: true,
-        data: { url: "/enquiries" },
-      });
-
-      setMessage("Test notification sent. Check your macOS notification area.");
+      registration.active.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
+      setMessage("Test notification requested. Check your macOS notification area.");
     } catch (error) {
       console.error("UNLIVO test notification failed", error);
       setMessage(error instanceof Error ? error.message : "Test notification failed.");
@@ -189,7 +176,7 @@ export default function PushNotificationButton() {
       <span>{enabled ? "Browser Notifications On" : "Enable Browser Notifications"}</span>
     </button>
     {enabled && <button onClick={sendTestNotification} disabled={busy} className="mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
-      {busy ? <Loader2 size={17} className="shrink-0 animate-spin text-[#087f73]"/> : <Send size={17} className="shrink-0 text-[#087f73]"/>}
+      {busy ? <Loader2 size={17} className="shrink-0 animate-spin text-[#087f73]"/> : <Bell size={17} className="shrink-0 text-[#087f73]"/>}
       <span>Send Test Notification</span>
     </button>}
     {message && <p className="px-3 pt-1 text-[10px] leading-4 text-[#687987]">{message}</p>}
