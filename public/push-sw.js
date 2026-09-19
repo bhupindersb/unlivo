@@ -1,4 +1,4 @@
-const UNLIVO_SW_VERSION = "2026-09-19-03";
+const UNLIVO_SW_VERSION = "2026-09-19-04";
 
 self.addEventListener("install", (event) => {
   console.log("UNLIVO service worker installing", UNLIVO_SW_VERSION);
@@ -127,10 +127,13 @@ async function showUnlivoNotification(data) {
 
   await self.registration.showNotification(title, {
     body,
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
     tag,
     renotify: true,
     requireInteraction: true,
     data: { url },
+    actions: [{ action: "open", title: "View enquiry" }],
   });
 }
 
@@ -144,11 +147,12 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ("navigate" in client && "focus" in client) {
-          client.navigate(targetUrl);
-          return client.focus();
-        }
+      const existingClient = clients.find((client) =>
+        client.url.startsWith(self.location.origin),
+      );
+
+      if (existingClient && "navigate" in existingClient && "focus" in existingClient) {
+        return existingClient.navigate(targetUrl).then(() => existingClient.focus());
       }
 
       return self.clients.openWindow(targetUrl);
