@@ -133,31 +133,35 @@ export default function PushNotificationButton() {
       }
 
       const registration = await navigator.serviceWorker.register("/push-sw.js");
+      await registration.update();
       await navigator.serviceWorker.ready;
 
       if (!registration.active) {
         throw new Error("UNLIVO notification service worker is not active yet. Please refresh the page and try again.");
       }
 
-      const channel = new MessageChannel();
-      const result = await new Promise<{ ok: boolean; stage?: string; error?: string }>((resolve, reject) => {
+      const result = await new Promise<{ ok: boolean; stage?: string; error?: string; version?: string }>((resolve, reject) => {
         const timeout = window.setTimeout(() => {
+          navigator.serviceWorker.removeEventListener("message", onMessage);
           reject(new Error("The UNLIVO service worker did not respond within 5 seconds. Please refresh the page and try again."));
         }, 5000);
 
-        channel.port1.onmessage = (event) => {
+        const onMessage = (event: MessageEvent) => {
+          if (event.data?.type !== "UNLIVO_TEST_NOTIFICATION_RESULT") return;
           window.clearTimeout(timeout);
+          navigator.serviceWorker.removeEventListener("message", onMessage);
           resolve(event.data);
         };
 
-        registration.active?.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" }, [channel.port2]);
+        navigator.serviceWorker.addEventListener("message", onMessage);
+        registration.active?.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
       });
 
       if (!result?.ok) {
         throw new Error(`Service worker notification failed${result?.stage ? ` at ${result.stage}` : ""}: ${result?.error || "Unknown error"}`);
       }
 
-      setMessage("Service worker successfully created the notification. If you still cannot see it, we will check Chrome/macOS notification settings next.");
+      setMessage(`Service worker v${result.version || "unknown"} successfully created the notification. If you still cannot see it, we will check Chrome/macOS notification settings next.`);
     } catch (error) {
       console.error("UNLIVO test notification failed", error);
       setMessage(error instanceof Error ? error.message : "Test notification failed.");
