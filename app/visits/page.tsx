@@ -48,6 +48,7 @@ export default function VisitsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [highlightedVisit, setHighlightedVisit] = useState("");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [proposedDates, setProposedDates] = useState<Record<string, string>>({});
   const [proposedTimes, setProposedTimes] = useState<Record<string, string>>({});
@@ -96,6 +97,14 @@ export default function VisitsPage() {
   useEffect(() => { void load(); }, []);
 
   useEffect(() => {
+    const visitId = new URLSearchParams(window.location.search).get("visit") || "";
+    if (visitId && visits.some(v => v.id === visitId)) {
+      setHighlightedVisit(visitId);
+      window.setTimeout(() => document.querySelector(`[data-visit-id="${visitId}"]`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+    }
+  }, [visits]);
+
+  useEffect(() => {
     if (!supabase || !userId) return;
     const channel = supabase
       .channel(`site-visits-${userId}`)
@@ -113,7 +122,7 @@ export default function VisitsPage() {
     setError("");
     const r = await supabase.from("site_visits").update(patch).eq("id", visit.id);
     if (r.error) setError(r.error.message);
-    else await load();
+    else { await load(); void supabase.functions.invoke("notify-enquiry", { body: { event: "site_visit_update", visit_id: visit.id } }); }
     setBusy("");
   };
 
@@ -161,7 +170,7 @@ export default function VisitsPage() {
             const other = owner ? profileMap.get(visit.requester_id)?.full_name || "Buyer" : profileMap.get(visit.owner_id)?.full_name || "Property owner";
             const active = ["requested","proposed","confirmed"].includes(visit.status);
             return (
-              <article key={visit.id} className="overflow-hidden rounded-3xl border border-[#dfe9ed] bg-white shadow-sm">
+              <article key={visit.id} data-visit-id={visit.id} className={`overflow-hidden rounded-3xl border bg-white shadow-sm ${highlightedVisit === visit.id ? "border-[#0bb89b] ring-2 ring-[#0bb89b]/20" : "border-[#dfe9ed]"}`} >
                 <div className="border-b border-[#e8eef1] p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
