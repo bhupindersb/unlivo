@@ -19,13 +19,29 @@ self.addEventListener("push", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type !== "UNLIVO_TEST_NOTIFICATION") return;
 
+  const reply = (payload) => {
+    if (event.ports?.[0]) event.ports[0].postMessage(payload);
+  };
+
   event.waitUntil(
-    showUnlivoNotification({
-      title: "UNLIVO Test Notification",
-      body: "If you can see this, browser notifications are working correctly.",
-      url: "/enquiries",
-      tag: "unlivo-local-test",
-    }),
+    (async () => {
+      try {
+        await showUnlivoNotification({
+          title: "UNLIVO Test Notification",
+          body: "If you can see this, browser notifications are working correctly.",
+          url: "/enquiries",
+          tag: "unlivo-local-test",
+        });
+
+        reply({ ok: true, stage: "showNotification" });
+      } catch (error) {
+        reply({
+          ok: false,
+          stage: "showNotification",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    })(),
   );
 });
 
@@ -35,17 +51,13 @@ async function showUnlivoNotification(data) {
   const url = data.url || "/enquiries";
   const tag = data.tag || `unlivo-notification-${Date.now()}`;
 
-  try {
-    await self.registration.showNotification(title, {
-      body,
-      tag,
-      renotify: true,
-      requireInteraction: true,
-      data: { url },
-    });
-  } catch (error) {
-    console.error("UNLIVO notification display failed", error);
-  }
+  await self.registration.showNotification(title, {
+    body,
+    tag,
+    renotify: true,
+    requireInteraction: true,
+    data: { url },
+  });
 }
 
 self.addEventListener("notificationclick", (event) => {
