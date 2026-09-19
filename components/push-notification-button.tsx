@@ -132,18 +132,47 @@ export default function PushNotificationButton() {
         throw new Error("Please enable browser notifications first.");
       }
 
+      // First test the browser notification API directly. This deliberately bypasses
+      // the service worker so we can separate browser/OS notification issues from
+      // service-worker messaging issues.
+      try {
+        const directNotification = new Notification("UNLIVO Direct Test", {
+          body: "This notification bypasses the service worker.",
+          tag: "unlivo-direct-test",
+        });
+        directNotification.onclick = () => window.focus();
+      } catch (error) {
+        throw new Error(
+          `Direct browser notification failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+
       const registration = await navigator.serviceWorker.register("/push-sw.js");
       await registration.update();
-      await navigator.serviceWorker.ready;
+      const readyRegistration = await navigator.serviceWorker.ready;
 
-      if (!registration.active) {
-        throw new Error("UNLIVO notification service worker is not active yet. Please refresh the page and try again.");
+      const diagnostic = {
+        active: readyRegistration.active?.state || "none",
+        waiting: readyRegistration.waiting?.state || "none",
+        installing: readyRegistration.installing?.state || "none",
+        controller: navigator.serviceWorker.controller?.state || "none",
+        controllerScript: navigator.serviceWorker.controller?.scriptURL || "none",
+      };
+
+      console.info("UNLIVO notification service worker diagnostic", diagnostic);
+
+      if (!readyRegistration.active) {
+        throw new Error("Direct notification worked, but the UNLIVO service worker is not active.");
       }
 
       const result = await new Promise<{ ok: boolean; stage?: string; error?: string; version?: string }>((resolve, reject) => {
         const timeout = window.setTimeout(() => {
           navigator.serviceWorker.removeEventListener("message", onMessage);
-          reject(new Error("The UNLIVO service worker did not respond within 5 seconds. Please refresh the page and try again."));
+          reject(
+            new Error(
+              `Direct browser notification worked, but the service worker did not respond within 5 seconds. SW active=${diagnostic.active}, controller=${diagnostic.controller}, script=${diagnostic.controllerScript}`,
+            ),
+          );
         }, 5000);
 
         const onMessage = (event: MessageEvent) => {
@@ -154,14 +183,22 @@ export default function PushNotificationButton() {
         };
 
         navigator.serviceWorker.addEventListener("message", onMessage);
-        registration.active?.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
+
+        // Prefer the worker controlling this page. If the page is not controlled
+        // yet, fall back to the active registration worker.
+        const target = navigator.serviceWorker.controller || readyRegistration.active;
+        target.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
       });
 
       if (!result?.ok) {
-        throw new Error(`Service worker notification failed${result?.stage ? ` at ${result.stage}` : ""}: ${result?.error || "Unknown error"}`);
+        throw new Error(
+          `Direct browser notification worked, but service worker notification failed${result?.stage ? ` at ${result.stage}` : ""}: ${result?.error || "Unknown error"}`,
+        );
       }
 
-      setMessage(`Service worker v${result.version || "unknown"} successfully created the notification. If you still cannot see it, we will check Chrome/macOS notification settings next.`);
+      setMessage(
+        `Both tests passed. Service worker v${result.version || "unknown"} created the second notification successfully.`,
+      );
     } catch (error) {
       console.error("UNLIVO test notification failed", error);
       setMessage(error instanceof Error ? error.message : "Test notification failed.");
