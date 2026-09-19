@@ -18,7 +18,7 @@ type Visit = {
   owner_note: string | null;
 };
 
-type Property = { id: string; title: string; city: string | null; state: string | null };
+type Property = { id: string; title: string; city: string | null; locality: string | null };
 type Profile = { id: string; full_name: string | null };
 
 export default function VisitsPage() {
@@ -60,18 +60,18 @@ export default function VisitsPage() {
 
     const rows = (data || []) as Visit[];
     const propertyIds = Array.from(new Set(rows.map((row) => row.property_id)));
-    const profileIds = Array.from(new Set(rows.flatMap((row) => [row.requester_id, row.owner_id])));
-
     let propertyRows: Property[] = [];
     let profileRows: Profile[] = [];
 
     if (propertyIds.length) {
-      const result = await supabase.from("properties").select("id, title, city, state").in("id", propertyIds);
+      const result = await supabase.from("properties").select("id, title, city, locality").in("id", propertyIds);
       if (result.data) propertyRows = result.data as Property[];
     }
 
-    if (profileIds.length) {
-      const result = await supabase.from("profiles").select("id, full_name").in("id", profileIds);
+    if (rows.length) {
+      const result = await supabase.rpc("get_site_visit_participant_profiles", {
+        p_visit_ids: rows.map((row) => row.id),
+      });
       if (result.data) profileRows = result.data as Profile[];
     }
 
@@ -204,7 +204,7 @@ export default function VisitsPage() {
                           <span className="rounded-full bg-[#f1f5f7] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[1px] text-[#60737e]">{isOwner ? "Owner" : "Buyer"}</span>
                         </div>
                         <h2 className="mt-3 text-xl font-extrabold">{property?.title || "Property"}</h2>
-                        <p className="mt-1 text-sm text-[#687987]">{[property?.city, property?.state].filter(Boolean).join(", ") || "Property location"}</p>
+                        <p className="mt-1 text-sm text-[#687987]">{[property?.locality, property?.city].filter(Boolean).join(", ") || "Property location"}</p>
                       </div>
                       <a href={`/properties/${visit.property_id}`} className="inline-flex items-center gap-2 rounded-xl border border-[#cbdde3] px-4 py-2.5 text-sm font-bold text-[#123b53]"><Home size={16} /> View property</a>
                     </div>
