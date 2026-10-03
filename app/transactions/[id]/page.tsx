@@ -74,6 +74,7 @@ export default function TransactionDetailPage(){
 
   const me=transaction?.buyer_id===userId?"buyer":transaction?.seller_id===userId?"seller":"staff";
 
+  const notifyTransaction=async(event:"payment_recorded"|"payment_received"|"completion_confirmed"|"transaction_cancelled",paymentId?:string)=>{    if(!supabase||!transaction)return;    try{      const r=await supabase.functions.invoke("transaction-notification",{body:{event,transaction_id:transaction.id,payment_id:paymentId||null}});      if(r.error)console.warn("UNLIVO transaction notification failed",r.error);    }catch(e){console.warn("UNLIVO transaction notification failed",e);}  };
   const updateStatus=async(next:"in_progress"|"cancelled")=>{
     if(!supabase||!transaction)return;
     const prompt=next==="cancelled"?"Cancel this transaction? This should only be used if the transaction will not proceed.":"Start the transaction and move it into the active transaction stage.";
@@ -81,7 +82,7 @@ export default function TransactionDetailPage(){
     setBusy(true);setMessage("");setError("");
     const r=await supabase.rpc("update_property_transaction_status",{p_transaction_id:transaction.id,p_status:next});
     if(r.error||r.data!==true)setError(r.error?.message||"This transaction status cannot be changed.");
-    else{setMessage("Transaction updated.");await load();}
+    else{setMessage("Transaction updated.");if(next==="cancelled")void notifyTransaction("transaction_cancelled");await load();}
     setBusy(false);
   };
 
@@ -92,7 +93,7 @@ export default function TransactionDetailPage(){
     setBusy(true);setMessage("");setError("");
     const r=await supabase.rpc("confirm_property_transaction",{p_transaction_id:transaction.id});
     if(r.error)setError(r.error.message);
-    else{setMessage(r.data==="completed"?"Both parties have confirmed. Transaction completed.":me==="buyer"?"Purchase confirmed. Waiting for seller confirmation.":"Sale confirmed. Waiting for buyer confirmation.");await load();}
+    else{setMessage(r.data==="completed"?"Both parties have confirmed. Transaction completed.":me==="buyer"?"Purchase confirmed. Waiting for seller confirmation.":"Sale confirmed. Waiting for buyer confirmation.");void notifyTransaction("completion_confirmed");await load();}
     setBusy(false);
   };
 
@@ -128,7 +129,7 @@ export default function TransactionDetailPage(){
     setError("");setMessage("");
     const r=await supabase.rpc("confirm_property_transaction_payment",{p_payment_id:p.id});
     if(r.error||r.data!==true)setError(r.error?.message||"This payment could not be confirmed.");
-    else{setMessage("Payment receipt confirmed.");await load();}
+    else{setMessage("Payment receipt confirmed.");void notifyTransaction("payment_received",p.id);await load();}
   };
   const deletePayment=async(p:Payment)=>{
     if(!supabase||p.received_at||p.recorded_by!==userId||!window.confirm("Delete this payment record?"))return;
