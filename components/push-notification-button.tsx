@@ -56,7 +56,8 @@ export default function PushNotificationButton() {
 
     const checkSubscription = async () => {
       if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       const registration = await navigator.serviceWorker.register("/push-sw.js");
@@ -90,7 +91,8 @@ export default function PushNotificationButton() {
     setBusy(true);
     setMessage("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         setMessage("Please sign in first.");
         return;
@@ -177,11 +179,11 @@ export default function PushNotificationButton() {
     }
   };
 
-  return <div className="border-t border-[#e8eef1] px-2 py-2">
-    <button onClick={enabled ? disableNotifications : enableNotifications} disabled={busy} className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-[11px] font-medium text-[#526574] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
-      {busy ? <Loader2 size={14} className="shrink-0 animate-spin text-[#087f73]"/> : enabled ? <Bell size={14} className="shrink-0 text-[#087f73]"/> : <BellOff size={17} className="shrink-0 text-[#087f73]"/>}
+  return <div className="border-t border-[#e8eef1] px-2 py-1.5">
+    <button onClick={enabled ? disableNotifications : enableNotifications} disabled={busy} className="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md px-1 py-0.5 text-left text-[10px] font-medium leading-4 text-[#526574] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
+      {busy ? <Loader2 size={14} className="shrink-0 animate-spin text-[#087f73]"/> : enabled ? <Bell size={12} className="shrink-0 text-[#087f73]"/> : <BellOff size={12} className="shrink-0 text-[#087f73]"/>}
       <span>{enabled ? "Browser Notifications On" : "Enable Browser Notifications"}</span>
     </button>
-    {message && <p className="px-2 pt-1 text-[9px] leading-3 text-[#687987]">{message}</p>}
+    {message && <p className="max-w-[220px] px-1 pt-1 text-[8px] leading-3 text-[#687987]">{message}</p>}
   </div>;
 }
