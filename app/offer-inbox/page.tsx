@@ -275,7 +275,10 @@ export default function OfferInboxPage() {
     }
 
     setBusyId("");
-    if (userId) void loadOffers(userId);
+    if (userId) {
+      void supabase.functions.invoke("notify-enquiry", { body: { event: "offer_update", offer_id: offer.id } });
+      void loadOffers(userId);
+    }
   };
 
   if (loading) {
