@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Clock3, Home, IndianRupee, MessageCircle, RotateCcw, X } from "lucide-react";
 import SiteHeader from "../../components/site-header";
 import SiteFooter from "../../components/site-footer";
@@ -80,8 +80,6 @@ export default function OfferInboxPage() {
   const [counterMessage, setCounterMessage] = useState("");
   const [busyId, setBusyId] = useState("");
   const [highlightedOffer, setHighlightedOffer] = useState("");
-
-  const propertyIds = useMemo(() => properties.map((property) => property.id), [properties]);
 
   const loadOffers = async (uid: string) => {
     if (!supabase) return;
