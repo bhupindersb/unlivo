@@ -1,4 +1,4 @@
-const UNLIVO_SW_VERSION = "2026-09-19-04";
+const UNLIVO_SW_VERSION = "2026-10-03-01";
 
 self.addEventListener("install", (event) => {
   console.log("UNLIVO service worker installing", UNLIVO_SW_VERSION);
@@ -133,7 +133,7 @@ async function showUnlivoNotification(data) {
     renotify: true,
     requireInteraction: true,
     data: { url },
-    actions: [{ action: "open", title: "View enquiry" }],
+    actions: [{ action: "open", title: url.startsWith("/offers") ? "View offer" : url.startsWith("/offer-inbox") ? "View offer" : url.startsWith("/visits") ? "View site visit" : "View enquiry" }],
   });
 }
 
