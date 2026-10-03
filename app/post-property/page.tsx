@@ -15,7 +15,7 @@ type Preview={file:File;url:string};
 
 export default function PostPropertyPage(){
  const[form,setForm]=useState(initial);const[user,setUser]=useState<any>(null);const[email,setEmail]=useState("");const[password,setPassword]=useState("");const[mode,setMode]=useState<"signup"|"login">("signup");const[files,setFiles]=useState<Preview[]>([]);const[saving,setSaving]=useState(false);const[message,setMessage]=useState("");const[error,setError]=useState("");
- useEffect(()=>{if(!supabase)return;supabase.auth.getUser().then(({data})=>setUser(data.user));const{data}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));return()=>data.subscription.unsubscribe()},[]);
+ useEffect(()=>{if(!supabase)return;supabase.auth.getSession().then(({data})=>setUser(data.session?.user ?? null));const{data}=supabase.auth.onAuthStateChange((_e,s)=>setUser(s?.user??null));return()=>data.subscription.unsubscribe()},[]);
  useEffect(()=>{const q=new URLSearchParams(window.location.search);if(q.get("mode")==="login")setMode("login")},[]);
  const set=(k:keyof F,v:any)=>setForm(x=>({...x,[k]:v}));
  const ensure=async(id:string)=>{if(!supabase)return;const r=await supabase.from("profiles").upsert({id,role:"owner",email:user?.email||null},{onConflict:"id",ignoreDuplicates:true});if(r.error)throw r.error};
