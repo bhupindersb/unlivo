@@ -44,10 +44,10 @@ Deno.serve(async (req: Request) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const { event, enquiry_id, message_id, visit_id } = await req.json();
-    console.log("notify-enquiry: event", { event, enquiry_id, message_id, visit_id });
+    const { event, enquiry_id, message_id, visit_id, offer_id } = await req.json();
+    console.log("notify-enquiry: event", { event, enquiry_id, message_id, visit_id, offer_id });
 
-    if (!event || (!enquiry_id && !message_id && !visit_id)) {
+    if (!event || (!enquiry_id && !message_id && !visit_id && !offer_id)) {
       return json({ error: "Missing notification data" }, 400);
     }
 
@@ -127,6 +127,32 @@ Deno.serve(async (req: Request) => {
       messageText = event === "new_site_visit"
         ? (v.requester_note || `A buyer requested a site visit for ${visitTime}.`)
         : (v.owner_note || v.requester_note || `Site visit status: ${v.status.replaceAll("_", " ")}. Scheduled time: ${visitTime}.`);
+    } else if (event === "new_offer" || event === "offer_update") {
+      const { data: o, error } = await admin
+        .from("property_offers")
+        .select("id,buyer_id,property_id,offer_amount,message,response_amount,response_message,last_action_by,status,properties(title,listed_by)")
+        .eq("id", offer_id)
+        .single();
+
+      if (error || !o) throw error || new Error("Offer not found");
+      if (event === "new_offer" && o.buyer_id !== user.id) return json({ error: "Forbidden" }, 403);
+      if (event === "offer_update" && o.last_action_by !== user.id) return json({ error: "Forbidden" }, 403);
+
+      recipientId = user.id === o.buyer_id ? o.properties.listed_by : o.buyer_id;
+      senderId = user.id;
+      propertyId = o.property_id;
+      propertyTitle = o.properties.title;
+
+      const amount = o.status === "submitted" ? o.offer_amount : (o.response_amount ?? o.offer_amount);
+      messageText = o.status === "countered"
+        ? (o.response_message || `A counter offer of ₹ ${Number(amount).toLocaleString("en-IN")} was made.`)
+        : o.status === "accepted"
+          ? `The offer of ₹ ${Number(amount).toLocaleString("en-IN")} was accepted.`
+          : o.status === "declined"
+            ? `The offer of ₹ ${Number(amount).toLocaleString("en-IN")} was declined.`
+            : o.status === "withdrawn"
+              ? `The offer of ₹ ${Number(amount).toLocaleString("en-IN")} was withdrawn.`
+              : (o.message || `A buyer submitted an offer of ₹ ${Number(amount).toLocaleString("en-IN")}.`);
     } else {
       return json({ error: "Unsupported event" }, 400);
     }
@@ -148,11 +174,21 @@ Deno.serve(async (req: Request) => {
         ? `New reply about ${propertyTitle}`
         : event === "new_site_visit"
           ? `New site visit request for ${propertyTitle}`
-          : `Site visit update for ${propertyTitle}`;
+          : event === "new_offer"
+            ? `New offer for ${propertyTitle}`
+            : event === "offer_update"
+              ? `Offer update for ${propertyTitle}`
+              : event === "new_offer"
+                ? `New offer for ${propertyTitle}`
+                : event === "offer_update"
+                  ? `Offer update for ${propertyTitle}`
+                  : `Site visit update for ${propertyTitle}`;
     const targetPath =
       event === "new_enquiry" || event === "reply"
         ? `/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}`
-        : `/visits?visit=${encodeURIComponent(visit_id)}`;
+        : event === "new_offer" || event === "offer_update"
+          ? `/offers?offer=${encodeURIComponent(offer_id)}`
+          : `/visits?visit=${encodeURIComponent(visit_id)}`;
 
     let pushSent = 0;
     let pushRemoved = 0;
@@ -221,7 +257,7 @@ Deno.serve(async (req: Request) => {
             : event === "new_site_visit"
               ? "You have a new site visit request"
               : "Your site visit has been updated";
-        const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com${targetPath}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">${event === "new_enquiry" || event === "reply" ? "Open Enquiry Inbox" : "Open Site Visits"}</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this UNLIVO property activity.</p></div>`;
+        const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com${targetPath}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">${event === "new_enquiry" || event === "reply" ? "Open Enquiry Inbox" : event === "new_offer" || event === "offer_update" ? "Open Offer" : "Open Site Visits"}</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this UNLIVO property activity.</p></div>`;
         const from = Deno.env.get("EMAIL_FROM") || "UNLIVO <no-reply@auth.unlivo.com>";
 
         const emailRes = await fetch("https://api.resend.com/emails", {
