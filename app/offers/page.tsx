@@ -276,7 +276,15 @@ export default function OffersPage() {
         ) : (
           <div className="mt-6 overflow-hidden rounded-3xl border border-[#dfe9ed] bg-white shadow-sm">
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[980px] border-collapse text-left">
+              <table className="w-full min-w-[980px] table-fixed border-collapse text-left">
+                <colgroup>
+                  <col style={{ width: "21.13%" }} />
+                  <col style={{ width: "14.08%" }} />
+                  <col style={{ width: "14.08%" }} />
+                  <col style={{ width: "14.08%" }} />
+                  <col style={{ width: "14.08%" }} />
+                  <col style={{ width: "22.55%" }} />
+                </colgroup>
                 <thead className="bg-[#f7fafb] text-[10px] uppercase tracking-[1.2px] text-[#7b8c97]">
                   <tr>
                     <th className="px-5 py-4 font-extrabold">Property</th>
