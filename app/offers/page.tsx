@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Clock3, Home, IndianRupee, MessageCircle, RotateCcw, X } from "lucide-react";
 import SiteHeader from "../../components/site-header";
 import SiteFooter from "../../components/site-footer";
@@ -58,6 +58,8 @@ export default function OffersPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [highlightedOffer, setHighlightedOffer] = useState("");
+  const loadInFlight = useRef<Promise<void> | null>(null);
+  const refreshTimer = useRef<number | null>(null);
 
   const offers = tab === "sent" ? sent : received;
 
@@ -67,89 +69,130 @@ export default function OffersPage() {
   }
 
   async function load() {
-    setLoading(true);
-    setMessage("");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setMessage("Please sign in to view your offers.");
-      setLoading(false);
-      return;
-    }
-    setUserId(user.id);
+    if (loadInFlight.current) return loadInFlight.current;
 
-    const [sentResult, ownedPropertiesResult] = await Promise.all([
-      supabase.from("property_offers").select("id,property_id,buyer_id,offer_amount,message,status,response_amount,response_message,last_action_by,created_at,updated_at").eq("buyer_id", user.id).order("updated_at", { ascending: false }),
-      supabase.from("properties").select("id,title,city,locality,price,listed_by").eq("listed_by", user.id),
-    ]);
+    const run = (async () => {
+      setLoading(true);
+      setMessage("");
 
-    if (sentResult.error) {
-      setMessage(sentResult.error.message);
-      setLoading(false);
-      return;
-    }
-    if (ownedPropertiesResult.error) {
-      setMessage(ownedPropertiesResult.error.message);
-      setLoading(false);
-      return;
-    }
-
-    const owned = (ownedPropertiesResult.data || []) as Property[];
-    const ownedIds = owned.map((p) => p.id);
-    let receivedRows: Offer[] = [];
-
-    if (ownedIds.length) {
-      const result = await supabase.from("property_offers")
-        .select("id,property_id,buyer_id,offer_amount,message,status,response_amount,response_message,last_action_by,created_at,updated_at")
-        .in("property_id", ownedIds)
-        .order("updated_at", { ascending: false });
-      if (result.error) {
-        setMessage(result.error.message);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setMessage("Please sign in to view your offers.");
         setLoading(false);
         return;
       }
-      receivedRows = (result.data || []) as Offer[];
-    }
+      setUserId(user.id);
 
-    const sentRows = (sentResult.data || []) as Offer[];
-    const allOffers = [...sentRows, ...receivedRows];
-    const propertyIds = Array.from(new Set(allOffers.map((o) => o.property_id)));
-    const offerIds = Array.from(new Set(allOffers.map((o) => o.id)));
+      const { data: sentData, error: sentError } = await supabase
+        .from("property_offers")
+        .select("id,property_id,buyer_id,offer_amount,message,status,response_amount,response_message,last_action_by,created_at,updated_at")
+        .eq("buyer_id", user.id)
+        .order("updated_at", { ascending: false });
 
-    let propertyRows: Property[] = [...owned];
-    if (propertyIds.length) {
-      const result = await supabase.from("properties").select("id,title,city,locality,price,listed_by").in("id", propertyIds);
-      if (result.data) propertyRows = result.data as Property[];
-    }
+      const { data: ownedData, error: ownedError } = await supabase
+        .from("properties")
+        .select("id,title,city,locality,price,listed_by")
+        .eq("listed_by", user.id);
 
-    let eventRows: Event[] = [];
-    let profileRows: Profile[] = [];
-    if (offerIds.length) {
+      if (sentError) {
+        setMessage(sentError.message);
+        setLoading(false);
+        return;
+      }
+      if (ownedError) {
+        setMessage(ownedError.message);
+        setLoading(false);
+        return;
+      }
+
+      const sentRows = (sentData || []) as Offer[];
+      const owned = (ownedData || []) as Property[];
+      const ownedIds = owned.map((p) => p.id);
+      let receivedRows: Offer[] = [];
+
+      if (ownedIds.length) {
+        const result = await supabase
+          .from("property_offers")
+          .select("id,property_id,buyer_id,offer_amount,message,status,response_amount,response_message,last_action_by,created_at,updated_at")
+          .in("property_id", ownedIds)
+          .order("updated_at", { ascending: false });
+
+        if (result.error) {
+          setMessage(result.error.message);
+          setLoading(false);
+          return;
+        }
+        receivedRows = (result.data || []) as Offer[];
+      }
+
+      const allOffers = [...sentRows, ...receivedRows];
+      const sentPropertyIds = Array.from(new Set(sentRows.map((o) => o.property_id).filter((id) => !ownedIds.includes(id))));
+      let propertyRows: Property[] = [...owned];
+
+      if (sentPropertyIds.length) {
+        const result = await supabase
+          .from("properties")
+          .select("id,title,city,locality,price,listed_by")
+          .in("id", sentPropertyIds);
+        if (result.data) propertyRows = [...propertyRows, ...(result.data as Property[])];
+      }
+
+      setSent(sentRows);
+      setReceived(receivedRows);
+      setProperties(propertyRows);
+      setLoading(false);
+
+      const offerIds = Array.from(new Set(allOffers.map((o) => o.id)));
+      if (!offerIds.length) {
+        setEvents([]);
+        setProfiles([]);
+        return;
+      }
+
       const [eventResult, profileResult] = await Promise.all([
-        supabase.from("property_offer_events").select("id,offer_id,actor_id,action,amount,message,created_at").in("offer_id", offerIds).order("created_at", { ascending: true }),
+        supabase
+          .from("property_offer_events")
+          .select("id,offer_id,actor_id,action,amount,message,created_at")
+          .in("offer_id", offerIds)
+          .order("created_at", { ascending: true }),
         supabase.rpc("get_property_offer_participant_profiles", { p_offer_ids: offerIds }),
       ]);
-      if (eventResult.error) setMessage(eventResult.error.message);
-      else eventRows = (eventResult.data || []) as Event[];
-      if (profileResult.error) setMessage(profileResult.error.message);
-      else profileRows = (profileResult.data || []) as Profile[];
-    }
 
-    setSent(sentRows);
-    setReceived(receivedRows);
-    setProperties(propertyRows);
-    setEvents(eventRows);
-    setProfiles(profileRows);
-    setLoading(false);
+      if (eventResult.error) setMessage(eventResult.error.message);
+      else setEvents((eventResult.data || []) as Event[]);
+
+      if (profileResult.error) setMessage(profileResult.error.message);
+      else setProfiles((profileResult.data || []) as Profile[]);
+    })();
+
+    loadInFlight.current = run;
+    try {
+      await run;
+    } finally {
+      loadInFlight.current = null;
+    }
   }
 
   useEffect(() => { void load(); }, []);
 
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase.channel("property-offers-my-offers-" + userId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "property_offers" }, () => { void load(); })
+
+    const channel = supabase
+      .channel("property-offers-my-offers-" + userId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "property_offers" }, () => {
+        if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+        refreshTimer.current = window.setTimeout(() => {
+          refreshTimer.current = null;
+          void load();
+        }, 250);
+      })
       .subscribe();
-    return () => { void supabase.removeChannel(channel); };
+
+    return () => {
+      if (refreshTimer.current) window.clearTimeout(refreshTimer.current);
+      void supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   useEffect(() => {
