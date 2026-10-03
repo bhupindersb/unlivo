@@ -182,7 +182,11 @@ Deno.serve(async (req: Request) => {
                 ? `New offer for ${propertyTitle}`
                 : event === "offer_update"
                   ? `Offer update for ${propertyTitle}`
-                  : `Site visit update for ${propertyTitle}`;
+                  : event === "new_offer"
+                  ? `New offer for ${propertyTitle}`
+                  : event === "offer_update"
+                    ? `Offer update for ${propertyTitle}`
+                    : `Site visit update for ${propertyTitle}`;
     const targetPath =
       event === "new_enquiry" || event === "reply"
         ? `/enquiries?enquiry=${encodeURIComponent(enquiry_id || message_id)}`
@@ -217,7 +221,7 @@ Deno.serve(async (req: Request) => {
           title: notificationTitle,
           body: `${senderName}: ${messageText}`.slice(0, 220),
           url: notificationUrl,
-          tag: `unlivo-${event}-${enquiry_id || message_id || visit_id}`,
+          tag: `unlivo-${event}-${offer_id || enquiry_id || message_id || visit_id}`,
         });
 
         for (const subscription of subscriptions || []) {
@@ -256,7 +260,11 @@ Deno.serve(async (req: Request) => {
             ? "You have a new enquiry reply"
             : event === "new_site_visit"
               ? "You have a new site visit request"
-              : "Your site visit has been updated";
+              : event === "new_offer"
+                ? "You have a new property offer"
+                : event === "offer_update"
+                  ? "Your property offer has been updated"
+                  : "Your site visit has been updated";
         const html = `<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>${escapeHtml(heading)}</h2><p><strong>${escapeHtml(senderName)}</strong> sent a message regarding <strong>${escapeHtml(propertyTitle)}</strong>.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0;white-space:pre-wrap">${escapeHtml(messageText)}</div><p><a href="https://www.unlivo.com${targetPath}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">${event === "new_enquiry" || event === "reply" ? "Open Enquiry Inbox" : event === "new_offer" || event === "offer_update" ? "Open Offer" : "Open Site Visits"}</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this UNLIVO property activity.</p></div>`;
         const from = Deno.env.get("EMAIL_FROM") || "UNLIVO <no-reply@auth.unlivo.com>";
 
