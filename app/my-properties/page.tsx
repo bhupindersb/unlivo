@@ -10,7 +10,8 @@ type Saved={property_id:string;created_at:string};
 type Enquiry={id:string;property_id:string;message:string|null;status:string;created_at:string};
 type Visit={id:string;property_id:string;requested_date:string;requested_time:string;message:string|null;status:string;created_at:string};
 type Offer={id:string;property_id:string;offer_amount:number;message:string|null;status:string;created_at:string};
-type Transaction={property:Property;role:"Bought"|"Sold";offer_amount:number|null};\ntype Tab="saved"|"enquiries"|"visits"|"offers"|"listed"|"transactions";
+type Transaction={property:Property;role:"Bought"|"Sold";offer_amount:number|null};
+type Tab="saved"|"enquiries"|"visits"|"offers"|"listed"|"transactions";
 const statusInfo:Record<string,{label:string;className:string;icon:any}>={draft:{label:"Draft",className:"bg-[#eef3f6] text-[#547083]",icon:FileText},pending_review:{label:"Under Review",className:"bg-[#fff8e7] text-[#8a691f]",icon:Clock3},published:{label:"Published",className:"bg-[#e9faf6] text-[#087f73]",icon:ShieldCheck},offer_received:{label:"Offer Received",className:"bg-[#eef5ff] text-[#315b91]",icon:ArrowRight},under_offer:{label:"Offer Accepted",className:"bg-[#e9faf6] text-[#087f73]",icon:ShieldCheck},sold:{label:"Sold",className:"bg-[#e9faf6] text-[#087f73]",icon:ShieldCheck},rented:{label:"Rented",className:"bg-[#e9faf6] text-[#087f73]",icon:ShieldCheck},rejected:{label:"Needs Attention",className:"bg-[#fff1f1] text-[#9b4d4d]",icon:FileText},inactive:{label:"Inactive",className:"bg-[#eef3f6] text-[#547083]",icon:FileText}};
 const activityStatus=(v:string)=>v.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 function price(p:Property){if(p.purpose==="rent")return p.rent_monthly?`₹ ${p.rent_monthly.toLocaleString("en-IN")}/month`:"Rent on request";return p.price?`₹ ${p.price>=10000000?(p.price/10000000).toFixed(2)+" Cr":(p.price/100000).toFixed(2)+" Lakh"}`:"Price on request"}
