@@ -154,91 +154,6 @@ export default function PushNotificationButton() {
     }
   };
 
-  const sendTestNotification = async () => {
-    if (busy) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      if (Notification.permission !== "granted") {
-        throw new Error("Please enable browser notifications first.");
-      }
-
-      // First test the browser notification API directly. This deliberately bypasses
-      // the service worker so we can separate browser/OS notification issues from
-      // service-worker messaging issues.
-      try {
-        const directNotification = new window.Notification("UNLIVO Direct Test", {
-          body: "This notification bypasses the service worker.",
-          tag: "unlivo-direct-test",
-        });
-        directNotification.onclick = () => window.focus();
-      } catch (error) {
-        throw new Error(
-          `Direct browser notification failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-
-      const registration = await navigator.serviceWorker.register("/push-sw.js");
-      await registration.update();
-      const readyRegistration = await navigator.serviceWorker.ready;
-
-      const diagnostic = {
-        active: readyRegistration.active?.state || "none",
-        waiting: readyRegistration.waiting?.state || "none",
-        installing: readyRegistration.installing?.state || "none",
-        controller: navigator.serviceWorker.controller?.state || "none",
-        controllerScript: navigator.serviceWorker.controller?.scriptURL || "none",
-      };
-
-      console.info("UNLIVO notification service worker diagnostic", diagnostic);
-
-      const activeWorker = readyRegistration.active;
-      if (!activeWorker) {
-        throw new Error("Direct notification worked, but the UNLIVO service worker is not active.");
-      }
-
-      const result = await new Promise<{ ok: boolean; stage?: string; error?: string; version?: string }>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-          navigator.serviceWorker.removeEventListener("message", onMessage);
-          reject(
-            new Error(
-              `Direct browser notification worked, but the service worker did not respond within 5 seconds. SW active=${diagnostic.active}, controller=${diagnostic.controller}, script=${diagnostic.controllerScript}`,
-            ),
-          );
-        }, 5000);
-
-        const onMessage = (event: MessageEvent) => {
-          if (event.data?.type !== "UNLIVO_TEST_NOTIFICATION_RESULT") return;
-          window.clearTimeout(timeout);
-          navigator.serviceWorker.removeEventListener("message", onMessage);
-          resolve(event.data);
-        };
-
-        navigator.serviceWorker.addEventListener("message", onMessage);
-
-        // Prefer the worker controlling this page. If the page is not controlled
-        // yet, fall back to the active registration worker.
-        const target = navigator.serviceWorker.controller || activeWorker;
-        target.postMessage({ type: "UNLIVO_TEST_NOTIFICATION" });
-      });
-
-      if (!result?.ok) {
-        throw new Error(
-          `Direct browser notification worked, but service worker notification failed${result?.stage ? ` at ${result.stage}` : ""}: ${result?.error || "Unknown error"}`,
-        );
-      }
-
-      setMessage(
-        `Both tests passed. Service worker v${result.version || "unknown"} created the second notification successfully.`,
-      );
-    } catch (error) {
-      console.error("UNLIVO test notification failed", error);
-      setMessage(error instanceof Error ? error.message : "Test notification failed.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const disableNotifications = async () => {
     if (!supabase || busy) return;
     setBusy(true);
@@ -262,8 +177,8 @@ export default function PushNotificationButton() {
     }
   };
 
-  return <div className="border-t border-[#e8eef1] px-3 py-3">
-    <button onClick={enabled ? disableNotifications : enableNotifications} disabled={busy} className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
+  return <div className="border-t border-[#e8eef1] px-2 py-2">
+    <button onClick={enabled ? disableNotifications : enableNotifications} disabled={busy} className="flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2 text-left text-xs font-semibold text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
       {busy ? <Loader2 size={17} className="shrink-0 animate-spin text-[#087f73]"/> : enabled ? <Bell size={17} className="shrink-0 text-[#087f73]"/> : <BellOff size={17} className="shrink-0 text-[#087f73]"/>}
       <span>{enabled ? "Browser Notifications On" : "Enable Browser Notifications"}</span>
     </button>
