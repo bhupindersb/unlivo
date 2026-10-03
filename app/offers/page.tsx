@@ -202,6 +202,7 @@ export default function OffersPage() {
     setCounterId("");
     setCounterAmount("");
     setCounterMessage("");
+    void supabase.functions.invoke("notify-enquiry", { body: { event: "offer_update", offer_id: offer.id } });
     await loadOffers();
     setBusyId("");
   }
