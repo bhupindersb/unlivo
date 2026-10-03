@@ -76,16 +76,29 @@ Deno.serve(async (req: Request) => {
         }
       }
     }
+    console.log("transaction-notification: email configuration", { resend_configured: Boolean(resendKey), email_from_configured: Boolean(Deno.env.get("EMAIL_FROM")) });
+
     if (resendKey) {
       for (const recipientId of recipientIds) {
         const { data: recipient, error: recipientError } = await admin.auth.admin.getUserById(recipientId);
-        if (recipientError || !recipient?.user?.email) continue;
+        if (recipientError) { console.error("transaction-notification: recipient lookup failed", recipientError.message); continue; }
+        if (!recipient?.user?.email) { console.error("transaction-notification: recipient has no email", recipientId); continue; }
+        console.log("transaction-notification: attempting email", { recipient: recipient.user.email });
         const html = '<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>' + escapeHtml(heading) + '</h2><p>' + escapeHtml(message) + '</p><p><a href="https://www.unlivo.com' + targetPath + '" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open Transaction</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this UNLIVO property transaction.</p></div>';
         const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + resendKey, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [recipient.user.email], subject, html }) });
-        if (response.ok) emailSent++; else console.error("transaction-notification: Resend rejected email", response.status, await response.text());
+        const emailBody = await response.text();
+        if (response.ok) {
+          emailSent++;
+          let resendId = null;
+          try { resendId = JSON.parse(emailBody).id || null; } catch { /* ignore malformed success body */ }
+          console.log("transaction-notification: email sent", { recipient: recipient.user.email, resendId });
+        } else {
+          console.error("transaction-notification: Resend rejected email", response.status, emailBody);
+        }
       }
     }
-    return json({ ok: true, event, recipients: recipientIds.length, email_sent: emailSent, push_sent: pushSent });
+    if (!resendKey) console.error("transaction-notification: RESEND_API_KEY is missing; email was not attempted");
+    return json({ ok: true, event, recipients: recipientIds.length, email_sent: emailSent, push_sent: pushSent, email_configured: Boolean(resendKey) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Transaction notification failed";
     console.error("transaction-notification: unhandled error", message);
