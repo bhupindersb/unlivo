@@ -75,7 +75,8 @@ export default function OffersPage() {
       setLoading(true);
       setMessage("");
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) {
         setMessage("Please sign in to view your offers.");
         setLoading(false);
