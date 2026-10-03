@@ -15,11 +15,38 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
     const client = supabase;
     if (!client) return;
     const load = async () => {
-      const { data } = await client.auth.getUser(); setUser(data.user);
-      if (data.user) { const p = await client.from("profiles").select("role,full_name").eq("id", data.user.id).maybeSingle(); setRole(p.data?.role || ""); const metadata = data.user.user_metadata || {}; const metadataName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim(); setName(p.data?.full_name || metadataName || data.user.email?.split("@")[0] || "there"); }
+      const { data } = await client.auth.getSession();
+      const sessionUser = data.session?.user ?? null;
+      setUser(sessionUser);
+      if (sessionUser) {
+        const p = await client.from("profiles").select("role,full_name").eq("id", sessionUser.id).maybeSingle();
+        setRole(p.data?.role || "");
+        const metadata = sessionUser.user_metadata || {};
+        const metadataName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim();
+        setName(p.data?.full_name || metadataName || sessionUser.email?.split("@")[0] || "there");
+      }
     };
-    load();
-    const { data } = client.auth.onAuthStateChange(async (_event, session) => { setUser(session?.user ?? null); if (!session?.user) { setRole(""); setName(""); setOpen(false); return; } const p = await client.from("profiles").select("role,full_name").eq("id", session.user.id).maybeSingle(); setRole(p.data?.role || ""); const metadata = session.user.user_metadata || {}; const metadataName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim(); setName(p.data?.full_name || metadataName || session.user.email?.split("@")[0] || "there"); });
+    void load();
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setRole("");
+        setName("");
+        setOpen(false);
+        return;
+      }
+      const sessionUser = session.user;
+      const metadata = sessionUser.user_metadata || {};
+      const metadataName = [metadata.first_name, metadata.last_name].filter(Boolean).join(" ").trim();
+      setName(metadataName || sessionUser.email?.split("@")[0] || "there");
+      window.setTimeout(async () => {
+        const p = await client.from("profiles").select("role,full_name").eq("id", sessionUser.id).maybeSingle();
+        if (p.data) {
+          setRole(p.data.role || "");
+          setName(p.data.full_name || metadataName || sessionUser.email?.split("@")[0] || "there");
+        }
+      }, 0);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
 
