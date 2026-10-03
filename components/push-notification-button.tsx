@@ -182,10 +182,6 @@ export default function PushNotificationButton() {
       {busy ? <Loader2 size={17} className="shrink-0 animate-spin text-[#087f73]"/> : enabled ? <Bell size={17} className="shrink-0 text-[#087f73]"/> : <BellOff size={17} className="shrink-0 text-[#087f73]"/>}
       <span>{enabled ? "Browser Notifications On" : "Enable Browser Notifications"}</span>
     </button>
-    {enabled && <button onClick={sendTestNotification} disabled={busy} className="mt-1 flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73] disabled:cursor-wait disabled:opacity-60">
-      {busy ? <Loader2 size={17} className="shrink-0 animate-spin text-[#087f73]"/> : <Bell size={17} className="shrink-0 text-[#087f73]"/>}
-      <span>Send Test Notification</span>
-    </button>}
     {message && <p className="px-3 pt-1 text-[10px] leading-4 text-[#687987]">{message}</p>}
   </div>;
 }
