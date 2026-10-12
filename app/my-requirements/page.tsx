@@ -13,6 +13,8 @@ import {
   Target,
   X,
   XCircle,
+  Bell,
+  BellRing,
 } from "lucide-react";
 import SiteHeader from "../../components/site-header";
 import SiteFooter from "../../components/site-footer";
@@ -27,6 +29,7 @@ type Requirement = {
   notes: string | null; status: string; created_at: string;
 };
 type Reason = { label: string; detail: string; ok: boolean; neutral?: boolean };
+type MatchNotification = { id:string; property_id:string; requirement_id:string; match_score:number; email_sent:boolean; push_sent:boolean; created_at:string; read_at:string|null; property?: { title:string; city:string; locality:string; price:number|null; rent_monthly:number|null; purpose:string } | null };
 type Property = {
   id: string; title: string; city: string; locality: string; price: number | null;
   rent_monthly: number | null; purpose: string; category: string; property_type: string | null;
@@ -69,6 +72,8 @@ export default function MyRequirements() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [minMatch, setMinMatch] = useState(0);
   const [sortBy, setSortBy] = useState("match");
+  const [notifications, setNotifications] = useState<MatchNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -87,6 +92,15 @@ export default function MyRequirements() {
   }, []);
 
   const requirement = requirements.find(r => r.id === selected) || requirements[0];
+
+  const loadNotifications = async () => {
+    if (!supabase) return;
+    const r = await supabase.from("buyer_requirement_match_notifications").select("id,property_id,requirement_id,match_score,email_sent,push_sent,created_at,read_at,property:properties(title,city,locality,price,rent_monthly,purpose)").order("created_at",{ascending:false}).limit(20);
+    if (!r.error) setNotifications((r.data || []) as MatchNotification[]);
+  };
+  useEffect(() => { loadNotifications(); }, []);
+  const unreadCount = notifications.filter(n => !n.read_at).length;
+  const markNotificationRead = async (id:string) => { if (!supabase) return; const now=new Date().toISOString(); await supabase.from("buyer_requirement_match_notifications").update({read_at:now}).eq("id",id); setNotifications(prev=>prev.map(n=>n.id===id?{...n,read_at:now}:n)); };
 
   useEffect(() => {
     (async () => {
