@@ -96,7 +96,7 @@ export default function MyRequirements() {
   const loadNotifications = async () => {
     if (!supabase) return;
     const r = await supabase.from("buyer_requirement_match_notifications").select("id,property_id,requirement_id,match_score,email_sent,push_sent,created_at,read_at,property:properties(title,city,locality,price,rent_monthly,purpose)").order("created_at",{ascending:false}).limit(20);
-    if (!r.error) setNotifications((r.data || []) as MatchNotification[]);
+    if (!r.error) { const rows = (r.data || []).map((row: any) => ({ ...row, property: Array.isArray(row.property) ? (row.property[0] ?? null) : (row.property ?? null) })) as MatchNotification[]; setNotifications(rows); }
   };
   useEffect(() => { loadNotifications(); }, []);
   const unreadCount = notifications.filter(n => !n.read_at).length;
