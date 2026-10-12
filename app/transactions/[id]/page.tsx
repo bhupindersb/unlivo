@@ -21,7 +21,7 @@ type Payment={id:string;amount:number;payment_date:string;payment_method:string;
 
 function money(value:number|null){return value==null?"—":`₹ ${Number(value).toLocaleString("en-IN",{maximumFractionDigits:0})}`;}
 function statusLabel(s:string){return s==="initiated"?"Transaction Started":s==="in_progress"?"In Progress":s==="completed"?"Completed":"Cancelled";}
-function eventLabel(e:Event){if(e.action==="offer_accepted")return "Offer accepted";if(e.action==="buyer_confirmed")return "Buyer confirmed purchase completion";if(e.action==="seller_confirmed")return "Seller confirmed sale completion";if(e.action==="staff_completed")return "Transaction completed by UNLIVO staff";if(e.action==="status_changed")return e.to_status?statusLabel(e.to_status):"Transaction updated";return e.action.replaceAll("_"," ").replace(/\b\w/g,l=>l.toUpperCase());}
+function eventLabel(e:Event){if(e.action==="offer_accepted")return "Offer accepted";if(e.action==="buyer_confirmed")return "Buyer confirmed purchase completion";if(e.action==="seller_confirmed")return "Seller confirmed sale completion";if(e.action==="staff_completed")return "Transaction completed by UNLIVO staff";if(e.action==="payment_received")return "Payment receipt confirmed";if(e.action==="status_changed")return e.to_status?statusLabel(e.to_status):"Transaction updated";return e.action.replaceAll("_"," ").replace(/\b\w/g,l=>l.toUpperCase());}
 
 export default function TransactionDetailPage(){
   const params=useParams<{id:string}>();
@@ -144,13 +144,12 @@ export default function TransactionDetailPage(){
   const seller=participants.find(x=>x.role==="seller");
   const canProgress=transaction.status==="initiated"||transaction.status==="in_progress";
   const myConfirmed=me==="buyer"?!!transaction.buyer_confirmed_at:me==="seller"?!!transaction.seller_confirmed_at:false;
-  const paymentReceivedIds=new Set(events.filter(e=>e.action==="payment_received"&&e.note?.startsWith("Payment record ")).map(e=>e.note!.replace("Payment record ","")));
   const actorLabel=(id:string|null)=>id===transaction.buyer_id?"Buyer":id===transaction.seller_id?"Seller":id===userId?"You":"UNLIVO staff";
   const activity=[
-    ...events.map(e=>({id:"event-"+e.id,kind:"event" as const,title:eventLabel(e),description:e.note||null,amount:e.amount,actor:e.actor_id,created_at:e.created_at})),
+    ...events.map(e=>({id:"event-"+e.id,kind:"event" as const,title:eventLabel(e),description:e.action==="payment_received"?null:e.note||null,amount:e.amount,actor:e.actor_id,created_at:e.created_at})),
     ...payments.map(p=>({id:"payment-"+p.id,kind:"payment" as const,title:"Payment recorded",description:p.reference?"Reference: "+p.reference:null,amount:p.amount,actor:p.recorded_by,created_at:p.created_at,paymentId:p.id})),
     ...documents.map(d=>({id:"document-"+d.id,kind:"document" as const,title:"Document uploaded",description:d.file_name,amount:null,actor:d.uploaded_by,created_at:d.created_at}))
-  ].filter(item=>item.kind!=="payment"||!paymentReceivedIds.has(item.paymentId!)).sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
+  ].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
 
   return <main className="min-h-screen bg-[#f7fafb] text-[#102638]">
     <SiteHeader/>
