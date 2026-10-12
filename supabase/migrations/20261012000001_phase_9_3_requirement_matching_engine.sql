@@ -3,7 +3,7 @@ returns table(property_id uuid,title text,city text,locality text,price numeric,
 language plpgsql security definer set search_path=public as $$
 declare r buyer_requirements%rowtype;
 begin
- select * into r from public.buyer_requirements where id=p_requirement_id and user_id=auth.uid() and status in ('active','matched');
+ select br.* into r from public.buyer_requirements br where br.id=p_requirement_id and br.user_id=auth.uid() and br.status in ('active','matched');
  if not found then raise exception 'Requirement not found, inactive, or access denied'; end if;
  return query
  with c as (
@@ -30,8 +30,8 @@ begin
    case when r.min_area_sqft is null and r.max_area_sqft is null then 0 else 5 end mx
   from c
  )
- select id,title,city,locality,price,rent_monthly,purpose,category,property_type,bedrooms,area_sqft,possession,furnishing,status,
-  case when mx=0 then 0 else round(raw::numeric/mx::numeric*100)::integer end,
+ select s.id,s.title,s.city,s.locality,s.price,s.rent_monthly,s.purpose,s.category,s.property_type,s.bedrooms,s.area_sqft,s.possession,s.furnishing,s.status,
+  case when s.mx=0 then 0 else round(s.raw::numeric/s.mx::numeric*100)::integer end,
   jsonb_build_array(
    jsonb_build_object('label','Purpose','detail',case when pp>0 then 'Listing purpose matches' else 'Purpose does not match' end,'ok',pp>0,'neutral',false),
    jsonb_build_object('label','Category','detail',case when cp>0 then 'Property category matches' else 'Category does not match' end,'ok',cp>0,'neutral',false),
@@ -42,7 +42,7 @@ begin
    jsonb_build_object('label','Bedrooms','detail',case when r.min_bedrooms is null and r.max_bedrooms is null then 'No bedroom preference' when bedrooms is null then 'Bedrooms are not specified on listing' when bp2>0 then bedrooms::text||' bedrooms matches' else bedrooms::text||' bedrooms is outside requested range' end,'ok',bp2>0,'neutral',r.min_bedrooms is null and r.max_bedrooms is null),
    jsonb_build_object('label','Size','detail',case when r.min_area_sqft is null and r.max_area_sqft is null then 'No size preference' when area_sqft is null then 'Area is not specified on listing' when ap>0 then area_sqft::text||' sq ft matches' else area_sqft::text||' sq ft is outside requested range' end,'ok',ap>0,'neutral',r.min_area_sqft is null and r.max_area_sqft is null)
   )
- from s order by case when raw=mx then 0 else 1 end,raw desc,created_at desc limit greatest(1,least(coalesce(p_limit,24),100));
+ from s order by case when s.raw=s.mx then 0 else 1 end,s.raw desc,s.created_at desc limit greatest(1,least(coalesce(p_limit,24),100));
 end; $$;
 revoke all on function public.get_buyer_requirement_matches(uuid,integer) from public;
 grant execute on function public.get_buyer_requirement_matches(uuid,integer) to authenticated;
