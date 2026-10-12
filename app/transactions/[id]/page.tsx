@@ -17,7 +17,7 @@ type Property={id:string;title:string;city:string|null;locality:string|null;purp
 type Event={id:string;actor_id:string|null;action:string;from_status:string|null;to_status:string|null;amount:number|null;note:string|null;created_at:string};
 type Participant={id:string;full_name:string|null;role:"buyer"|"seller"|null};
 type Document={id:string;document_type:string;file_name:string;storage_path:string;mime_type:string|null;file_size:number|null;uploaded_by:string;created_at:string};
-type Payment={id:string;amount:number;payment_date:string;payment_method:string;reference:string|null;note:string|null;recorded_by:string;proof_document_id:string|null;received_at:string|null;received_by:string|null};
+type Payment={id:string;amount:number;payment_date:string;payment_method:string;reference:string|null;note:string|null;recorded_by:string;proof_document_id:string|null;received_at:string|null;received_by:string|null;created_at:string};
 
 function money(value:number|null){return value==null?"—":`₹ ${Number(value).toLocaleString("en-IN",{maximumFractionDigits:0})}`;}
 function statusLabel(s:string){return s==="initiated"?"Transaction Started":s==="in_progress"?"In Progress":s==="completed"?"Completed":"Cancelled";}
@@ -59,7 +59,7 @@ export default function TransactionDetailPage(){
       supabase.from("property_transaction_events").select("id,actor_id,action,from_status,to_status,amount,note,created_at").eq("transaction_id",row.id).order("created_at",{ascending:false}),
       supabase.rpc("get_property_transaction_participant_profiles",{p_transaction_id:row.id}),
       supabase.from("property_transaction_documents").select("id,document_type,file_name,storage_path,mime_type,file_size,uploaded_by,created_at").eq("transaction_id",row.id).order("created_at",{ascending:false}),
-      supabase.from("property_transaction_payments").select("id,amount,payment_date,payment_method,reference,note,recorded_by,proof_document_id,received_at,received_by").eq("transaction_id",row.id).order("payment_date",{ascending:false})
+      supabase.from("property_transaction_payments").select("id,amount,payment_date,payment_method,reference,note,recorded_by,proof_document_id,received_at,received_by,created_at").eq("transaction_id",row.id).order("payment_date",{ascending:false})
     ]);
     if(p.data)setProperty(p.data as Property);
     if(!e.error)setEvents((e.data||[]) as Event[]);
@@ -144,6 +144,13 @@ export default function TransactionDetailPage(){
   const seller=participants.find(x=>x.role==="seller");
   const canProgress=transaction.status==="initiated"||transaction.status==="in_progress";
   const myConfirmed=me==="buyer"?!!transaction.buyer_confirmed_at:me==="seller"?!!transaction.seller_confirmed_at:false;
+  const paymentReceivedIds=new Set(events.filter(e=>e.action==="payment_received"&&e.note?.startsWith("Payment record ")).map(e=>e.note!.replace("Payment record ","")));
+  const actorLabel=(id:string|null)=>id===transaction.buyer_id?"Buyer":id===transaction.seller_id?"Seller":id===userId?"You":"UNLIVO staff";
+  const activity=[
+    ...events.map(e=>({id:"event-"+e.id,kind:"event" as const,title:eventLabel(e),description:e.note||null,amount:e.amount,actor:e.actor_id,created_at:e.created_at})),
+    ...payments.map(p=>({id:"payment-"+p.id,kind:"payment" as const,title:"Payment recorded",description:p.reference?"Reference: "+p.reference:null,amount:p.amount,actor:p.recorded_by,created_at:p.created_at,paymentId:p.id})),
+    ...documents.map(d=>({id:"document-"+d.id,kind:"document" as const,title:"Document uploaded",description:d.file_name,amount:null,actor:d.uploaded_by,created_at:d.created_at}))
+  ].filter(item=>item.kind!=="payment"||!paymentReceivedIds.has(item.paymentId!)).sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime());
 
   return <main className="min-h-screen bg-[#f7fafb] text-[#102638]">
     <SiteHeader/>
@@ -192,8 +199,15 @@ export default function TransactionDetailPage(){
             <div className="mt-5 space-y-3">{payments.length===0?<div className="rounded-2xl bg-[#f7fafb] p-5 text-sm text-[#687987]">No payments recorded yet.</div>:payments.map(p=><div key={p.id} className="flex flex-col gap-2 rounded-2xl border border-[#e3ecef] bg-white p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold">{money(p.amount)} <span className="ml-2 text-xs font-semibold text-[#7b8c97]">{p.payment_method.replaceAll("_"," ")}</span></p><p className="mt-1 text-xs text-[#7b8c97]">{new Date(p.payment_date).toLocaleDateString("en-IN")}{p.reference?" · "+p.reference:""}</p>{p.note&&<p className="mt-1 text-xs text-[#687987]">{p.note}</p>}{p.proof_document_id&&<p className="mt-1 text-xs font-semibold text-[#315b91]">Payment proof attached</p>}{p.received_at&&<p className="mt-1 text-xs font-semibold text-[#087f73]">Received on {new Date(p.received_at).toLocaleDateString("en-IN")}</p>}</div>{p.received_at?<span className="rounded-xl bg-[#e9faf6] px-3 py-2 text-xs font-bold text-[#087f73]">Payment received</span>:me==="seller"?<button onClick={()=>confirmPaymentReceived(p)} className="rounded-xl bg-[#087f73] px-3 py-2 text-xs font-bold text-white">Confirm payment received</button>:p.recorded_by===userId&&<button onClick={()=>deletePayment(p)} className="rounded-xl border border-[#efcccc] bg-[#fff7f7] px-3 py-2 text-xs font-bold text-[#a24646]">Delete</button>}</div>)}</div>
           </div>
           <div className="rounded-3xl border border-[#dfe9ed] bg-white p-6 shadow-sm lg:p-8">
-            <div className="flex items-center justify-between gap-4"><h2 className="text-xl font-extrabold">Transaction timeline</h2><span className="text-xs text-[#7b8c97]">{events.length} event{events.length===1?"":"s"}</span></div>
-            <div className="mt-7 space-y-6">{events.map((e,i)=><div key={e.id} className="relative flex gap-4"><div className="relative flex shrink-0 flex-col items-center"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9faf6] text-[#087f73]"><CheckCircle2 size={18}/></div>{i<events.length-1&&<div className="absolute top-10 h-full w-px bg-[#dfe9ed]"/>}</div><div className="min-w-0 pb-2"><p className="font-bold">{eventLabel(e)}</p><p className="mt-1 text-xs text-[#7b8c97]">{new Date(e.created_at).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"})}</p>{e.amount!=null&&<p className="mt-2 text-sm font-bold">{money(e.amount)}</p>}{e.note&&<p className="mt-2 text-sm leading-6 text-[#687987]">{e.note}</p>}</div></div>)}</div>
+            <div className="flex items-center justify-between gap-4"><div><h2 className="text-xl font-extrabold">Transaction activity</h2><p className="mt-1 text-sm text-[#687987]">A chronological record of important actions on this transaction.</p></div><span className="text-xs text-[#7b8c97]">{activity.length} activit{activity.length===1?"y":"ies"}</span></div>
+            <div className="mt-7 space-y-6">{activity.length===0?<div className="rounded-2xl bg-[#f7fafb] p-5 text-sm text-[#687987]">No transaction activity has been recorded yet.</div>:activity.map((item,i)=>{
+              const isPayment=item.kind==="payment";
+              const isDocument=item.kind==="document";
+              return <div key={item.id} className="relative flex gap-4">
+                <div className="relative flex shrink-0 flex-col items-center"><div className={`flex h-9 w-9 items-center justify-center rounded-full ${isPayment?"bg-[#fff8ee] text-[#9a6410]":isDocument?"bg-[#eef5ff] text-[#315b91]":"bg-[#e9faf6] text-[#087f73]"}`}>{isPayment?<IndianRupee size={17}/>:isDocument?<FileText size={17}/>:<CheckCircle2 size={18}/>}</div>{i<activity.length-1&&<div className="absolute top-10 h-full w-px bg-[#dfe9ed]"/>}</div>
+                <div className="min-w-0 pb-2"><p className="font-bold">{item.title}</p><p className="mt-1 text-xs text-[#7b8c97]">{new Date(item.created_at).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"})} · {actorLabel(item.actor)}</p>{item.amount!=null&&<p className="mt-2 text-sm font-bold">{money(item.amount)}</p>}{item.description&&<p className="mt-2 text-sm leading-6 text-[#687987]">{item.description}</p>}</div>
+              </div>;
+            })}</div>
           </div>
         </div>
 
