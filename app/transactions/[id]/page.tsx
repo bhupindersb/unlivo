@@ -119,8 +119,8 @@ export default function TransactionDetailPage(){
     if(!amount||amount<=0){setError("Enter a valid payment amount.");return;}
     if(amount>balance){setError("Payment amount cannot exceed the remaining balance.");return;}
     setSavingPayment(true);setError("");setMessage("");
-    const r=await supabase.from("property_transaction_payments").insert({transaction_id:transaction.id,recorded_by:userId,amount,payment_date:new Date().toISOString(),payment_method:paymentMethod,reference:paymentReference.trim()||null,note:paymentNote.trim()||null,proof_document_id:paymentProofId||null});
-    if(r.error)setError(r.error.message);else{setPaymentAmount("");setPaymentReference("");setPaymentNote("");setPaymentProofId("");setMessage("Payment record saved.");await load();}
+    const r=await supabase.from("property_transaction_payments").insert({transaction_id:transaction.id,recorded_by:userId,amount,payment_date:new Date().toISOString(),payment_method:paymentMethod,reference:paymentReference.trim()||null,note:paymentNote.trim()||null,proof_document_id:paymentProofId||null}).select("id").single();
+    if(r.error)setError(r.error.message);else{setPaymentAmount("");setPaymentReference("");setPaymentNote("");setPaymentProofId("");setMessage("Payment record saved.");if(r.data?.id)void notifyTransaction("payment_recorded",r.data.id);await load();}
     setSavingPayment(false);
   };
   const confirmPaymentReceived=async(p:Payment)=>{
