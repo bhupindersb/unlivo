@@ -3,8 +3,8 @@ returns table(property_id uuid,title text,city text,locality text,price numeric,
 language plpgsql security definer set search_path=public as $$
 declare r buyer_requirements%rowtype;
 begin
- select * into r from public.buyer_requirements where id=p_requirement_id and user_id=auth.uid();
- if not found then raise exception 'Requirement not found or access denied'; end if;
+ select * into r from public.buyer_requirements where id=p_requirement_id and user_id=auth.uid() and status in ('active','matched');
+ if not found then raise exception 'Requirement not found, inactive, or access denied'; end if;
  return query
  with c as (
   select p.*,
