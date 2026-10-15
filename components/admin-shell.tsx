@@ -11,6 +11,7 @@ const nav:NavItem[]=[
  {href:"/admin",label:"Dashboard",icon:LayoutDashboard},
  {href:"/admin/properties",label:"Properties",icon:Building2},
  {href:"/admin/transactions",label:"Transactions",icon:ArrowLeftRight},
+ {href:"/admin/offers",label:"Offers",icon:HandCoins},
  {href:"/admin/site-visits",label:"Site Visits",icon:CalendarDays},
  {href:"/admin/reviewers",label:"Reviewers",icon:ShieldCheck},
  {href:"/admin/users",label:"Users",icon:Users},
