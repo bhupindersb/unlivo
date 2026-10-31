@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 
 export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
   const isSignup = mode === "signup";
+  const [brokerSignup, setBrokerSignup] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -16,6 +17,8 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    setBrokerSignup(isSignup && query.get("role") === "broker");
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) window.location.replace("/");
@@ -35,11 +38,11 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/confirm`,
-            data: { first_name: firstName.trim() || null, last_name: lastName.trim() || null, phone: phone.trim() || null },
+            data: { first_name: firstName.trim() || null, last_name: lastName.trim() || null, phone: phone.trim() || null, broker_signup: brokerSignup },
           },
         });
         if (result.error) throw result.error;
-        if (result.data.session) { window.location.replace("/"); return; }
+        if (result.data.session) { window.location.replace(brokerSignup ? "/for-brokers/apply" : "/"); return; }
         setMessage("Account created. Please check your email and confirm your address before logging in.");
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
@@ -60,8 +63,8 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
           <div className="mb-8 text-center">
             <a href="/" aria-label="UNLIVO home" className="inline-block"><img src="/unlivo-logo.svg" alt="UNLIVO" className="mx-auto w-[210px]" /></a>
             <p className="mt-7 text-[11px] font-bold uppercase tracking-[3px] text-[#547083]">{isSignup ? "Join UNLIVO" : "Welcome back"}</p>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-[-1px] sm:text-4xl">{isSignup ? "Create your account" : "Log in to UNLIVO"}</h1>
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#687987]">{isSignup ? "Create your free account to discover properties, save listings, make enquiries and manage your property journey." : "Sign in to continue to your UNLIVO account and access your saved properties, enquiries and listings."}</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-[-1px] sm:text-4xl">{brokerSignup ? "Create your Broker account" : isSignup ? "Create your account" : "Log in to UNLIVO"}</h1>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#687987]">{brokerSignup ? "Create your broker account. After your email is verified, you can complete your broker application for Admin review." : isSignup ? "Create your free account to discover properties, save listings, make enquiries and manage your property journey." : "Sign in to continue to your UNLIVO account and access your saved properties, enquiries and listings."}</p>
           </div>
 
           <div className="rounded-3xl border border-[#dfe9ed] bg-white p-6 shadow-[0_18px_55px_rgba(16,38,56,0.08)] sm:p-8">
