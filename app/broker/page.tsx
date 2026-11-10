@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import SiteHeader from "../../../components/site-header";
-import SiteFooter from "../../../components/site-footer";
+import SiteHeader from "../../components/site-header";
+import SiteFooter from "../../components/site-footer";
 import { ArrowRight, Building2, CalendarDays, HandCoins, MessageSquare, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
