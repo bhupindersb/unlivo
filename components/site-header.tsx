@@ -67,7 +67,7 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
 
   const logout = async () => { if (supabase) await supabase.auth.signOut(); window.location.href = "/"; };
   const nav = ["Buy", "Rent", "Sell", "For Brokers"];
-  const navHref = (item: string) => item === "Sell" ? (user ? "/post-property" : "/login") : item === "For Brokers" ? "/for-brokers" : "/properties";
+  const navHref = (item: string) => item === "Sell" ? (user ? "/post-property" : "/login") : item === "For Brokers" ? (user && role === "broker" && brokerStatus === "approved" ? "/broker" : "/for-brokers") : "/properties";
   const staffHref = role === "admin" ? "/admin" : "/reviewer"; const staffLabel = role === "admin" ? "Admin Portal" : "Reviewer Portal"; const firstName = (name.trim().split(/\s+/)[0] || "there");
   const menuLink = "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73]";
   const mobileMenuLink = "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-[#193246] transition hover:bg-[#eef7f5] hover:text-[#087f73]";
