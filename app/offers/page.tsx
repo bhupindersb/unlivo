@@ -23,6 +23,7 @@ type Offer = {
 type Property = { id: string; title: string; city: string | null; locality: string | null; price: number | null; listed_by?: string };
 type Event = { id: string; offer_id: string; actor_id: string; action: Offer["status"]; amount: number | null; message: string | null; created_at: string };
 type Profile = { id: string; full_name: string | null };
+type Transaction = { id: string; offer_id: string; status: string };
 
 const statusStyles: Record<string, string> = {
   submitted: "border-[#f3d49b] bg-[#fff8e8] text-[#9a6500]",
@@ -50,6 +51,7 @@ export default function OffersPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [expanded, setExpanded] = useState("");
   const [counterId, setCounterId] = useState("");
   const [counterAmount, setCounterAmount] = useState("");
@@ -141,6 +143,13 @@ export default function OffersPage() {
       setSent(sentRows);
       setReceived(receivedRows);
       setProperties(propertyRows);
+
+      const acceptedOfferIds = sentRows.filter((o) => o.status === "accepted").map((o) => o.id);
+      if (acceptedOfferIds.length) {
+        const transactionResult = await supabase.from("property_transactions").select("id,offer_id,status").in("offer_id", acceptedOfferIds);
+        if (transactionResult.error) setMessage(transactionResult.error.message);
+        else setTransactions((transactionResult.data || []) as Transaction[]);
+      } else setTransactions([]);
       setLoading(false);
 
       const offerIds = Array.from(new Set(allOffers.map((o) => o.id)));
@@ -334,6 +343,7 @@ export default function OffersPage() {
                                 <button disabled={busy} onClick={() => void updateOffer(offer, "declined")} className="rounded-lg border border-[#efcccc] px-2.5 py-2 text-xs font-bold text-[#8b4b4b] disabled:opacity-50"><X size={14} className="inline" /> Decline</button>
                                 <button disabled={busy} onClick={() => { setCounterId(offer.id); setCounterAmount(String(offer.offer_amount)); setCounterMessage(""); }} className="rounded-lg border border-[#cbdde3] px-2.5 py-2 text-xs font-bold text-[#123b53] disabled:opacity-50"><RotateCcw size={14} className="inline" /> Counter</button>
                               </div> : null}
+                              {tab === "sent" && offer.status === "accepted" ? (() => { const tx = transactions.find((item) => item.offer_id === offer.id); return tx ? <a href={"/transactions/" + tx.id} className="mt-2 inline-flex items-center gap-1 rounded-lg bg-[#087f73] px-3 py-2 text-xs font-bold text-white">Open transaction</a> : <p className="mt-2 text-[11px] text-[#71838e]">Preparing transaction workspace…</p>; })() : null}
                               {tab === "sent" && (offer.status === "submitted" || buyerCanRespond) ? <div className="mt-2 flex flex-wrap gap-2">
                                 {buyerCanRespond ? <button disabled={busy} onClick={() => void updateOffer(offer, "accepted")} className="rounded-lg bg-[#123b53] px-2.5 py-2 text-xs font-bold text-white disabled:opacity-50"><Check size={14} className="inline" /> Accept counter</button> : null}
                                 {offer.status !== "withdrawn" && offer.status !== "accepted" && offer.status !== "declined" ? <button disabled={busy} onClick={() => void updateOffer(offer, "withdrawn")} className="rounded-lg border border-[#efcccc] px-2.5 py-2 text-xs font-bold text-[#8b4b4b] disabled:opacity-50"><X size={14} className="inline" /> Withdraw</button> : null}
@@ -389,6 +399,7 @@ export default function OffersPage() {
                     <button onClick={() => setExpanded(expanded === offer.id ? "" : offer.id)} className="rounded-lg border border-[#cbdde3] px-3 py-2 text-xs font-bold text-[#123b53]">{expanded === offer.id ? "Hide details" : "Details"}</button>
                     {ownerCanRespond ? <><button disabled={busy} onClick={() => void updateOffer(offer, "accepted")} className="rounded-lg bg-[#123b53] px-3 py-2 text-xs font-bold text-white">Accept</button><button disabled={busy} onClick={() => void updateOffer(offer, "declined")} className="rounded-lg border border-[#efcccc] px-3 py-2 text-xs font-bold text-[#8b4b4b]">Decline</button><button disabled={busy} onClick={() => { setCounterId(offer.id); setCounterAmount(String(offer.offer_amount)); }} className="rounded-lg border border-[#cbdde3] px-3 py-2 text-xs font-bold text-[#123b53]">Counter</button></> : null}
                     {buyerCanRespond ? <button disabled={busy} onClick={() => void updateOffer(offer, "accepted")} className="rounded-lg bg-[#123b53] px-3 py-2 text-xs font-bold text-white">Accept counter</button> : null}
+                    {tab === "sent" && offer.status === "accepted" ? (() => { const tx = transactions.find((item) => item.offer_id === offer.id); return tx ? <a href={"/transactions/" + tx.id} className="rounded-lg bg-[#087f73] px-3 py-2 text-xs font-bold text-white">Open transaction</a> : <span className="self-center text-[11px] text-[#71838e]">Preparing transaction…</span>; })() : null}
                     {tab === "sent" && !["accepted","declined","withdrawn"].includes(offer.status) ? <button disabled={busy} onClick={() => void updateOffer(offer, "withdrawn")} className="rounded-lg border border-[#efcccc] px-3 py-2 text-xs font-bold text-[#8b4b4b]">Withdraw</button> : null}
                   </div>
                   {counterId === offer.id ? <div className="mt-3 rounded-xl bg-[#f7fafb] p-3"><input type="number" min="1" value={counterAmount} onChange={(e) => setCounterAmount(e.target.value)} className="w-full rounded-lg border border-[#d7e3e8] bg-white px-3 py-2 text-sm" placeholder="Counter amount" /><input value={counterMessage} onChange={(e) => setCounterMessage(e.target.value)} className="mt-2 w-full rounded-lg border border-[#d7e3e8] bg-white px-3 py-2 text-sm" placeholder="Message (optional)" /><button disabled={busy} onClick={() => void updateOffer(offer, "countered")} className="mt-2 rounded-lg bg-[#071d2d] px-3 py-2 text-xs font-bold text-white">Send counter</button></div> : null}
