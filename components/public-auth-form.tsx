@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 
 export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
   const isSignup = mode === "signup";
+  const nextPath = (() => { const value = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("next"); return value && value.startsWith("/") && !value.startsWith("//") ? value : ""; })();
   const [brokerSignup, setBrokerSignup] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -21,7 +22,7 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
     setBrokerSignup(isSignup && query.get("role") === "broker");
     if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) window.location.replace("/");
+      if (data.user) window.location.replace(nextPath || "/");
     });
   }, []);
 
@@ -37,12 +38,12 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
           email: email.trim(),
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/confirm`,
+            emailRedirectTo: `${window.location.origin}/auth/confirm${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`,
             data: { first_name: firstName.trim() || null, last_name: lastName.trim() || null, phone: phone.trim() || null, broker_signup: brokerSignup },
           },
         });
         if (result.error) throw result.error;
-        if (result.data.session) { window.location.replace(brokerSignup ? "/for-brokers/apply" : "/"); return; }
+        if (result.data.session) { window.location.replace(brokerSignup ? "/for-brokers/apply" : nextPath || "/"); return; }
         setMessage("Account created. Please check your email and confirm your address before logging in.");
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
