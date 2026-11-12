@@ -48,6 +48,7 @@ on public.property_owner_invitations for update to authenticated
 using (invited_by = (select auth.uid()) and status = 'pending')
 with check (invited_by = (select auth.uid()) and status in ('pending','revoked'));
 
+revoke all on public.property_owner_invitations from public;
 revoke all on public.property_owner_invitations from anon;
 grant select, insert on public.property_owner_invitations to authenticated;
 revoke update on public.property_owner_invitations from authenticated;
