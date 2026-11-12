@@ -48,7 +48,7 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
       } else {
         const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (result.error) throw result.error;
-        window.location.replace("/");
+        window.location.replace(nextPath || "/");
       }
     } catch (e: any) {
       setError(e?.message || "We could not complete your request. Please try again.");
@@ -78,7 +78,7 @@ export default function PublicAuthForm({ mode }: { mode: "signup" | "login" }) {
               <Field label="Password" value={password} onChange={setPassword} placeholder={isSignup ? "At least 6 characters" : "Your password"} type="password" icon={<LockKeyhole size={17} />} required minLength={6} newPassword={isSignup} />
               <button type="submit" disabled={busy || !email || !password} className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#071d2d] px-5 text-sm font-extrabold text-white transition hover:bg-[#102f44] disabled:cursor-not-allowed disabled:opacity-50">{busy ? "Please wait…" : isSignup ? "Create Account" : "Log In"}{!busy && <ArrowRight size={17} />}</button>
             </form>
-            <div className="mt-7 border-t border-[#e8eef1] pt-6 text-center text-sm text-[#687987]">{isSignup ? "Already have an account?" : "Don't have an account?"}{" "}<a href={isSignup ? "/login" : "/signup"} className="font-extrabold text-[#087f73] hover:text-[#066c62]">{isSignup ? "Log in" : "Create one"}</a></div>
+            <div className="mt-7 border-t border-[#e8eef1] pt-6 text-center text-sm text-[#687987]">{isSignup ? "Already have an account?" : "Don't have an account?"}{" "}<a href={isSignup ? (nextPath ? "/login?next="+encodeURIComponent(nextPath) : "/login") : (nextPath ? "/signup?next="+encodeURIComponent(nextPath) : "/signup")} className="font-extrabold text-[#087f73] hover:text-[#066c62]">{isSignup ? "Log in" : "Create one"}</a></div>
           </div>
           <p className="mt-6 text-center text-xs leading-5 text-[#7b8c97]">By continuing, you agree to use UNLIVO responsibly and provide accurate information about yourself and your properties.</p>
         </div>
