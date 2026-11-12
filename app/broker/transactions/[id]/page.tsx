@@ -10,7 +10,8 @@ import { supabase } from "../../../../lib/supabase";
 type Tx={id:string;property_id:string;buyer_id:string;seller_id:string;agreed_amount:number;due_amount:number|null;status:string;started_at:string;updated_at:string;completed_at:string|null;payment_due_at:string|null;buyer_confirmed_at:string|null;seller_confirmed_at:string|null;notes:string|null};
 type Doc={id:string;document_type:string;file_name:string;storage_path:string;file_size:number|null;created_at:string};
 type Pay={id:string;amount:number;payment_date:string;payment_method:string;reference:string|null;note:string|null;received_at:string|null;created_at:string};
-type Event={id:string;action:string;note:string|null;amount:number|null;created_at:string};\ntype BrokerNote={id:string;note:string;created_at:string;broker_id:string};
+type Event={id:string;action:string;note:string|null;amount:number|null;created_at:string};
+type BrokerNote={id:string;note:string;created_at:string;broker_id:string};
 const money=(v:number|null)=>v==null?"—":`₹ ${Number(v).toLocaleString("en-IN",{maximumFractionDigits:0})}`;
 export default function BrokerTransactionDetail(){
  const params=useParams<{id:string}>();const[tx,setTx]=useState<Tx|null>(null),[property,setProperty]=useState<any>(null),[docs,setDocs]=useState<Doc[]>([]),[payments,setPayments]=useState<Pay[]>([]),[events,setEvents]=useState<Event[]>([]),[people,setPeople]=useState<any[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState("");
