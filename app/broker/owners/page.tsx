@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, Building2, Copy, Mail, RefreshCw, Send, ShieldCheck } from "lucide-react";
 import SiteHeader from "../../../components/site-header";
 import SiteFooter from "../../../components/site-footer";
@@ -42,7 +42,7 @@ export default function BrokerOwnersPage(){
  };
  useEffect(()=>{void load()},[]);
  const propertyName=(id:string)=>properties.find(p=>p.id===id)?.title||"Property";
- const invite=async(e:React.FormEvent)=>{
+ const invite=async(e:FormEvent)=>{
   e.preventDefault();if(!selected||!email.trim())return;
   setBusy(true);setError("");setMessage("");setLatestLink("");
   const r=await supabase.from("property_owner_invitations").insert({property_id:selected,invited_by:userId,invited_email:email.trim().toLowerCase(),message:note.trim()||null}).select("id").single();
