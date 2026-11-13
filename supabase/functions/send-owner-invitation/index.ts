@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escapeHtml, renderUnlivoEmail } from "../_shared/email-template.ts";
 const allowedOrigins = new Set(["https://www.unlivo.com", "https://unlivo.com"]);
 const headers = (origin: string | null) => ({
   "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin) ? origin : "https://www.unlivo.com",
@@ -7,7 +8,6 @@ const headers = (origin: string | null) => ({
   "Access-Control-Allow-Methods": "POST, OPTIONS", "Vary": "Origin", "Content-Type": "application/json",
 });
 const json = (body: Record<string, unknown>, status = 200, origin: string | null = null) => new Response(JSON.stringify(body), { status, headers: headers(origin) });
-const escapeHtml = (value: string) => value.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 Deno.serve(async (req: Request) => {
  const origin=req.headers.get("Origin");
  if(req.method==="OPTIONS")return new Response("ok",{headers:headers(origin)});
@@ -31,7 +31,7 @@ Deno.serve(async (req: Request) => {
   const link="https://www.unlivo.com/owner/invitations?id="+encodeURIComponent(i.id);
   const {data:profile}=await admin.from("profiles").select("full_name").eq("id",user.id).maybeSingle();
   const broker=profile?.full_name||"Your property broker";
-  const html=`<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:24px auto;padding:28px;border:1px solid #dfe9ed;border-radius:18px"><div style="font-size:22px;font-weight:800;color:#087f73">UNLIVO</div><h1 style="font-size:24px;margin:24px 0 12px">Property owner invitation</h1><p style="font-size:15px;line-height:1.7"><strong>${escapeHtml(broker)}</strong> has invited you to claim your property on UNLIVO.</p><div style="background:#f5f8fa;border-radius:12px;padding:18px;margin:20px 0"><strong>${escapeHtml(title)}</strong>${location?`<div style="margin-top:6px;color:#687987">${escapeHtml(location)}</div>`:""}${i.message?`<p style="margin:14px 0 0;white-space:pre-wrap">${escapeHtml(i.message)}</p>`:""}</div><p style="font-size:14px;line-height:1.7">Sign in or create a UNLIVO account using this email address: <strong>${escapeHtml(i.invited_email)}</strong>. Your ownership will only be linked after you review and accept the invitation.</p><p style="margin:26px 0"><a href="${link}" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:700">Review Owner Invitation</a></p><p style="font-size:12px;color:#687987;line-height:1.6">If you were not expecting this invitation, you can ignore this email. No ownership changes will occur unless you sign in with the invited email address and accept.</p></div>`;
+  const html=renderUnlivoEmail({preheader:"You have been invited to claim your property on UNLIVO.",heading:"Property owner invitation",intro:`<strong>${escapeHtml(broker)}</strong> has invited you to claim your property on UNLIVO. Sign in or create a UNLIVO account using this email address: <strong>${escapeHtml(i.invited_email)}</strong>. Your ownership will only be linked after you review and accept the invitation.`,details:`<strong>${escapeHtml(title)}</strong>${location?`<div style="margin-top:6px;color:#687987">${escapeHtml(location)}</div>`:""}${i.message?`<p style="margin:14px 0 0;white-space:pre-wrap">${escapeHtml(i.message)}</p>`:""}`,ctaLabel:"Review Owner Invitation",ctaUrl:link,footer:"If you were not expecting this invitation, you can ignore this email. No ownership changes will occur unless you sign in with the invited email address and accept."});
   const from=Deno.env.get("EMAIL_FROM")||"UNLIVO <no-reply@auth.unlivo.com>";
   const response=await fetch("https://api.resend.com/emails",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json"},body:JSON.stringify({from,to:[i.invited_email],subject:"You have been invited to claim your property on UNLIVO",html,text:`${broker} invited you to claim ${title} on UNLIVO. Sign in using ${i.invited_email} and review the invitation here: ${link}. Ownership is only linked after you accept.`})});
   const body=await response.text();
