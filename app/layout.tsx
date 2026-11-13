@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | UNLIVO",
   },
   description:
-    "Tell UNLIVO what property you need. Discover relevant properties and connect with buyers, owners and verified real estate brokers across India.",
+    "Tell UNLIVO what property you need. Discover relevant properties and connect with buyers, owners and approved real estate brokers across India.",
   applicationName: "UNLIVO",
   openGraph: {
     type: "website",
