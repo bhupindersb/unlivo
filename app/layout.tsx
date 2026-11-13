@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   description:
     "Tell UNLIVO what property you need. Discover relevant properties and connect with buyers, owners and verified real estate brokers across India.",
   applicationName: "UNLIVO",
-  alternates: { canonical: "/" },
   openGraph: {
     type: "website",
     siteName: "UNLIVO",
