@@ -30,7 +30,7 @@ function preferenceResult(candidate: Candidate, requirement: any) {
       listingValue === preference || listingValue.includes(preference) || preference.includes(listingValue)
     );
     if (matched) {
-      extraPoints += 10;
+      extraPoints += 1000;
       strengths.push(label + ": " + String(actual).replaceAll("_", " "));
     } else {
       tradeoffs.push(label + " is listed as " + String(actual).replaceAll("_", " ") + ", which differs from your preference");
