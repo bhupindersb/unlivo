@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, BarChart3, CheckCircle2, ChevronDown, Heart, Handshake, Home, MapPin, ShieldCheck, Users } from "lucide-react";
+import { ArrowRight, Building2, CheckCircle2, Heart, Handshake, Home, MapPin, ShieldCheck, Users } from "lucide-react";
 import PropertySearch from "../components/property-search";
 import SiteHeader from "../components/site-header";
 import SiteFooter from "../components/site-footer";
@@ -30,24 +30,36 @@ export default function HomePage(){
     </div>
     <div className="relative mx-auto w-full max-w-[540px] lg:ml-auto">
       <div className="absolute -right-5 -top-7 h-40 w-40 rounded-full bg-[#b9eee4]/70 blur-3xl"/>
-      <div className="relative overflow-hidden rounded-[28px] border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(7,29,45,0.14)] backdrop-blur sm:p-7">
-        <div className="flex items-center justify-between gap-3">
-          <div><p className="text-[10px] font-bold uppercase tracking-[2px] text-[#0a9d87]">Step 1</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.5px] text-[#102638]">Tell us what you're looking for</h2></div>
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#e8faf5] text-[#08a98f]"><Home size={22}/></div>
+      <div className="relative overflow-hidden rounded-[28px] border border-white/90 bg-white/95 p-5 shadow-[0_24px_80px_rgba(7,29,45,0.14)] backdrop-blur sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><p className="text-[10px] font-bold uppercase tracking-[2px] text-[#0a9d87]">See how it works</p><h2 className="mt-1 text-xl font-extrabold tracking-[-.5px] text-[#102638]">From requirement to relevant matches</h2></div>
+          <span className="inline-flex items-center rounded-full border border-[#bfece2] bg-[#effbf8] px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-[1.2px] text-[#078875]">Demo preview</span>
         </div>
-        <div className="mt-6 space-y-3">
-          <div className="rounded-xl border border-[#e4ecef] bg-[#f8fbfc] p-4"><p className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#7b8994]">Property type</p><p className="mt-1 font-bold text-[#173246]">3 BHK Apartment</p></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-[#e4ecef] bg-[#f8fbfc] p-4"><p className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#7b8994]">Preferred location</p><p className="mt-1 text-sm font-bold text-[#173246]">Mohali / Chandigarh</p></div>
-            <div className="rounded-xl border border-[#e4ecef] bg-[#f8fbfc] p-4"><p className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#7b8994]">Your budget</p><p className="mt-1 text-sm font-bold text-[#173246]">₹80L – ₹1.2Cr</p></div>
+        <div className="mt-6 rounded-2xl bg-[#f3f8fa] p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div><p className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#7b8994]">Example buyer requirement</p><p className="mt-1 text-base font-extrabold text-[#173246]">Looking for a 3 BHK home</p></div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[#0aa88e]"><Home size={20}/></div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#dce8ec] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#365064]">Mohali / Chandigarh</span>
+            <span className="rounded-full border border-[#dce8ec] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#365064]">₹80L – ₹1.2Cr</span>
+            <span className="rounded-full border border-[#dce8ec] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#365064]">Buy</span>
           </div>
         </div>
-        <div className="my-5 flex items-center gap-3"><div className="h-px flex-1 bg-[#e5edef]"/><span className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#0a9d87]">Then UNLIVO matches</span><div className="h-px flex-1 bg-[#e5edef]"/></div>
-        <div className="rounded-2xl bg-[#071d2d] p-4 text-white sm:p-5">
-          <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#13c6a3]/15 text-[#43e0c0]"><CheckCircle2 size={21}/></div><div><p className="font-bold">Relevant properties, brought to you</p><p className="mt-1 text-[11px] text-white/65">Matches based on the needs you share</p></div></div>
-          <div className="mt-4 flex items-center gap-2"><div className="h-1.5 flex-1 rounded-full bg-white/15"><div className="h-1.5 w-4/5 rounded-full bg-[#13c6a3]"/></div><span className="text-[10px] font-semibold text-[#8cebd8]">Your needs come first</span></div>
+        <div className="my-5 flex items-center gap-3"><div className="h-px flex-1 bg-[#e5edef]"/><span className="text-[10px] font-bold uppercase tracking-[1.5px] text-[#0a9d87]">UNLIVO finds relevant options</span><div className="h-px flex-1 bg-[#e5edef]"/></div>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3 rounded-2xl border border-[#dcebe8] bg-white p-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#e9faf6] text-[#0aa88e]"><Home size={23}/></div>
+            <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-extrabold text-[#173246]">3 BHK apartment</p><span className="rounded-full bg-[#eaf9f4] px-2 py-0.5 text-[9px] font-bold text-[#078875]">Example match</span></div><p className="mt-1 text-[11px] text-[#71818c]">Location and budget align with the sample requirement</p></div>
+            <CheckCircle2 size={19} className="shrink-0 text-[#0aa88e]"/>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-[#e4ecef] bg-white p-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f0f5f8] text-[#527084]"><Building2 size={22}/></div>
+            <div className="min-w-0 flex-1"><p className="text-sm font-extrabold text-[#173246]">More suitable properties</p><p className="mt-1 text-[11px] text-[#71818c]">Compare options and connect with their owners or brokers</p></div>
+            <ArrowRight size={18} className="shrink-0 text-[#78909d]"/>
+          </div>
         </div>
-        <p className="mt-4 text-center text-[10px] text-[#81909a]">Illustrative example · Your matches depend on your requirement</p>
+        <p className="mt-4 text-center text-[10px] text-[#81909a]">Illustrative example only · Actual matches depend on your requirement and available listings</p>
       </div>
       <div className="absolute -bottom-5 -left-4 hidden rounded-xl border border-white bg-white px-4 py-3 shadow-xl sm:block"><p className="text-[10px] font-bold uppercase tracking-[1px] text-[#0a9d87]">UNLIVO approach</p><p className="mt-1 text-sm font-extrabold text-[#102638]">Your requirement. Your matches.</p></div>
     </div>
