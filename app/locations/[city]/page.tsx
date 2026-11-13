@@ -10,7 +10,7 @@ const markets = {
     title: "Property in Mohali",
     description: "Explore residential and commercial property opportunities in Mohali. Browse current UNLIVO listings or tell us what you are looking for and get connected with relevant matches.",
     intro: "Find a property in Mohali with a clearer starting point. Whether you are looking to buy a home, explore a plot or consider a commercial space, UNLIVO helps you describe your needs and connect with relevant property options.",
-    availability: "UNLIVO currently has published property listings in Mohali. Availability changes as listings are updated.",
+    availability: "Browse the live UNLIVO search to see the latest approved listings in Mohali. New properties appear as they are reviewed and published.",
     areas: ["Sector 63", "Sector 66", "Sector 69", "Sector 71", "Sector 80", "Sector 82", "Sector 91"],
   },
   chandigarh: {
@@ -18,7 +18,7 @@ const markets = {
     title: "Property in Chandigarh",
     description: "Explore property opportunities in Chandigarh. Browse UNLIVO for current listings or post your requirement to be connected when relevant properties become available.",
     intro: "Looking for property in Chandigarh? Start with the location, property type and budget that matter to you. UNLIVO is designed to connect your requirement with relevant property options and the people listing them.",
-    availability: "There are no currently published listings in Chandigarh on UNLIVO. You can still post your requirement and return as new listings are approved.",
+    availability: "Check the live UNLIVO search for current availability. If you do not find the right property today, post your requirement so relevant property contacts can respond.",
     areas: ["Sector 28", "Sector 34"],
   },
   zirakpur: {
@@ -26,7 +26,7 @@ const markets = {
     title: "Property in Zirakpur",
     description: "Explore property in Zirakpur with UNLIVO. Browse current listings, compare available options and post your requirement to find a property that fits your needs.",
     intro: "Searching for property in Zirakpur? Share the type of property, budget and preferred location you have in mind. UNLIVO helps bring relevant listings and property contacts closer to your requirement.",
-    availability: "UNLIVO currently has a published property listing in Zirakpur. Availability changes as listings are updated.",
+    availability: "Browse the live UNLIVO search to see the latest approved listings in Zirakpur. New properties appear as they are reviewed and published.",
     areas: [],
   },
   "new-chandigarh": {
@@ -34,7 +34,7 @@ const markets = {
     title: "Property in New Chandigarh",
     description: "Explore property opportunities in New Chandigarh. Tell UNLIVO what you are looking for and connect with relevant property options as listings become available.",
     intro: "Planning to buy or explore property in New Chandigarh? Share your preferred property type, budget and location. UNLIVO helps you express your requirement and connect with relevant property opportunities.",
-    availability: "There are no currently published listings in New Chandigarh on UNLIVO. Post your requirement to let relevant property contacts know what you are looking for.",
+    availability: "Check the live UNLIVO search for current availability. If you do not find the right property today, post your requirement so relevant property contacts can respond.",
     areas: [],
   },
 } as const;
@@ -53,6 +53,7 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
     title: market.title,
     description: market.description,
     alternates: { canonical: `/locations/${city}` },
+    robots: city === "chandigarh" || city === "new-chandigarh" ? { index: false, follow: true } : { index: true, follow: true },
     openGraph: { title: market.title, description: market.description, url: `https://www.unlivo.com/locations/${city}` },
   };
 }
@@ -69,7 +70,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
     description: market.description,
     url: `https://www.unlivo.com/locations/${city}`,
     isPartOf: { "@type": "WebSite", name: "UNLIVO", url: "https://www.unlivo.com" },
-    about: { "@type": "Place", name: market.name, address: { "@type": "PostalAddress", addressLocality: market.name, addressRegion: "Punjab", addressCountry: "IN" } },
+    about: { "@type": "Place", name: market.name, address: { "@type": "PostalAddress", addressLocality: market.name, addressCountry: "IN" } },
   };
 
   return (
@@ -95,7 +96,7 @@ export default async function CityLandingPage({ params }: { params: Promise<{ ci
           <h2 className="text-2xl font-extrabold">Find a property that fits your needs</h2>
           <p className="mt-4 leading-7 text-[#5e6f7d]">{market.description}</p>
           <p className="mt-4 text-sm leading-7 text-[#687987]">{market.availability}</p>
-          {market.areas.length > 0 && <><h3 className="mt-8 text-sm font-extrabold uppercase tracking-[1.2px] text-[#547083]">Locations represented in current UNLIVO listings</h3><div className="mt-4 flex flex-wrap gap-2">{market.areas.map((area) => <Link key={area} href={`/properties?location=${encodeURIComponent(area + ", " + market.name)}`} className="rounded-full border border-[#dfe9ed] bg-[#f8fbfc] px-4 py-2 text-xs font-semibold text-[#365366] hover:border-[#0bb89b] hover:text-[#087f73]">{area}</Link>)}</div></>}
+          {market.areas.length > 0 && <><h3 className="mt-8 text-sm font-extrabold uppercase tracking-[1.2px] text-[#547083]">Locations represented in current UNLIVO listings</h3><div className="mt-4 flex flex-wrap gap-2">{market.areas.map((area) => <Link key={area} href={`/properties?location=${encodeURIComponent(area)}`} className="rounded-full border border-[#dfe9ed] bg-[#f8fbfc] px-4 py-2 text-xs font-semibold text-[#365366] hover:border-[#0bb89b] hover:text-[#087f73]">{area}</Link>)}</div></>}
         </div>
         <aside className="rounded-3xl bg-[#071d2d] p-7 text-white sm:p-9">
           <p className="text-[10px] font-bold uppercase tracking-[2px] text-[#62d9c1]">A better way to search</p>
