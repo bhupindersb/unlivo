@@ -50,13 +50,10 @@ export default function BrokerOwnersPage(){
    const link=window.location.origin+"/owner/invitations?id="+r.data.id;
    setLatestLink(link);
    const sent=await supabase.functions.invoke("send-owner-invitation",{body:{invitation_id:r.data.id}});
-   if(sent.error||!sent.data?.email_sent){
-    setError(sent.error?.message||sent.data?.error||"The invitation was created, but the email could not be sent. Use the fallback link below.");
-    setMessage("Invitation saved. You can copy the secure link and share it manually.");
-   }else{
-    setMessage("Owner invitation emailed successfully to "+email.trim().toLowerCase()+".");
-   }
-   setEmail("");setNote("");await load();
+   const deliveryError=sent.error?.message||sent.data?.error||(!sent.data?.email_sent?"The invitation was created, but the email could not be sent. Use the fallback link below.":"");
+   if(deliveryError){setMessage("Invitation saved. You can copy the secure link and share it manually.");}
+   else{setMessage("Owner invitation emailed successfully to "+email.trim().toLowerCase()+".");}
+   setEmail("");setNote("");await load();if(deliveryError)setError(deliveryError);
   }
   setBusy(false);
  };
