@@ -7,7 +7,7 @@ import SiteFooter from "../../../components/site-footer";
 import { supabase } from "../../../lib/supabase";
 
 type Property={id:string;title:string;city:string;locality:string;listed_by:string;owner_id:string|null;status:string};
-type Invitation={id:string;property_id:string;invited_email:string;status:string;created_at:string;message:string|null};
+type Invitation={id:string;property_id:string;invited_email:string;status:string;created_at:string;message:string|null;email_sent_at:string|null;email_error:string|null};
 
 export default function BrokerOwnersPage(){
  const [properties,setProperties]=useState<Property[]>([]);
@@ -31,7 +31,7 @@ export default function BrokerOwnersPage(){
   const [own,rels,inv]=await Promise.all([
    supabase.from("properties").select("id,title,city,locality,listed_by,owner_id,status").eq("listed_by",session.user.id).order("created_at",{ascending:false}),
    supabase.from("property_broker_relationships").select("property_id").eq("broker_id",session.user.id).eq("relationship_type","listing_representation").eq("status","active"),
-   supabase.from("property_owner_invitations").select("id,property_id,invited_email,status,created_at,message").eq("invited_by",session.user.id).order("created_at",{ascending:false})
+   supabase.from("property_owner_invitations").select("id,property_id,invited_email,status,created_at,message,email_sent_at,email_error").eq("invited_by",session.user.id).order("created_at",{ascending:false})
   ]);
   if(own.error)setError(own.error.message);if(rels.error)setError(rels.error.message);if(inv.error)setError(inv.error.message);
   const ids=Array.from(new Set([...(own.data||[]).map(p=>p.id),...(rels.data||[]).map(r=>r.property_id)]));
@@ -48,7 +48,14 @@ export default function BrokerOwnersPage(){
   const r=await supabase.from("property_owner_invitations").insert({property_id:selected,invited_by:userId,invited_email:email.trim().toLowerCase(),message:note.trim()||null}).select("id").single();
   if(r.error){setError(r.error.message)}else{
    const link=window.location.origin+"/owner/invitations?id="+r.data.id;
-   setLatestLink(link);setMessage("Invitation created. Copy the secure link and share it with the owner. They must sign in using the invited email address.");
+   setLatestLink(link);
+   const sent=await supabase.functions.invoke("send-owner-invitation",{body:{invitation_id:r.data.id}});
+   if(sent.error||!sent.data?.email_sent){
+    setError(sent.error?.message||sent.data?.error||"The invitation was created, but the email could not be sent. Use the fallback link below.");
+    setMessage("Invitation saved. You can copy the secure link and share it manually.");
+   }else{
+    setMessage("Owner invitation emailed successfully to "+email.trim().toLowerCase()+".");
+   }
    setEmail("");setNote("");await load();
   }
   setBusy(false);
@@ -70,11 +77,11 @@ export default function BrokerOwnersPage(){
    <input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="owner@example.com" className="mt-2 h-12 w-full rounded-xl border border-[#d7e3e8] px-4 text-sm outline-none focus:border-[#0bb89b]"/>
    <label className="mt-5 block text-xs font-bold uppercase tracking-[1px] text-[#547083]">Personal message <span className="font-normal normal-case">(optional)</span></label>
    <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} placeholder="Add a short message for the owner…" className="mt-2 w-full rounded-xl border border-[#d7e3e8] px-4 py-3 text-sm outline-none focus:border-[#0bb89b]"/>
-   <button disabled={busy||!selected||!email.trim()} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0bb89b] px-5 text-sm font-extrabold text-white disabled:opacity-50"><Send size={16}/>{busy?"Creating invitation…":"Create owner invitation"}</button>
-   {latestLink&&<div className="mt-5 rounded-xl border border-[#cfe9e4] bg-[#f1fbf8] p-4"><p className="text-xs font-bold text-[#087f73]">Share this invitation link</p><p className="mt-2 break-all text-xs text-[#536575]">{latestLink}</p><button type="button" onClick={()=>void copy(latestLink)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#123b53] px-4 py-2 text-xs font-bold text-white"><Copy size={14}/> Copy link</button></div>}
+   <button disabled={busy||!selected||!email.trim()} className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#0bb89b] px-5 text-sm font-extrabold text-white disabled:opacity-50"><Send size={16}/>{busy?"Sending invitation…":"Send owner invitation"}</button>
+   {latestLink&&error&&<div className="mt-5 rounded-xl border border-[#cfe9e4] bg-[#f1fbf8] p-4"><p className="text-xs font-bold text-[#087f73]">Email fallback link</p><p className="mt-2 break-all text-xs text-[#536575]">{latestLink}</p><button type="button" onClick={()=>void copy(latestLink)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#123b53] px-4 py-2 text-xs font-bold text-white"><Copy size={14}/> Copy link</button></div>}
   </form>
   <div className="rounded-3xl border border-[#dfe9ed] bg-white p-6 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="text-lg font-extrabold">Invitation history</h2><p className="mt-1 text-xs text-[#71838e]">{pending.length} awaiting owner response</p></div><button onClick={()=>void load()} className="rounded-lg border border-[#d7e3e8] p-2 text-[#547083]" aria-label="Refresh"><RefreshCw size={16}/></button></div>
-   {invitations.length===0?<div className="py-14 text-center"><Building2 size={30} className="mx-auto text-[#0bb89b]"/><p className="mt-3 font-bold">No invitations yet</p><p className="mt-1 text-sm text-[#71838e]">Invitations you create will appear here.</p></div>:<div className="mt-5 divide-y divide-[#edf1f3]">{invitations.map(i=><div key={i.id} className="py-4 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="break-all text-sm font-extrabold">{i.invited_email}</p><span className={"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase "+(i.status==="accepted"?"bg-[#e9faf6] text-[#087f73]":i.status==="pending"?"bg-[#fff8e7] text-[#8a691f]":"bg-[#eef3f6] text-[#60737e]")}>{i.status}</span></div><p className="mt-1 text-xs text-[#71838e]">{propertyName(i.property_id)} · {new Date(i.created_at).toLocaleDateString("en-IN")}</p>{i.status==="pending"&&<button onClick={()=>void copy(window.location.origin+"/owner/invitations?id="+i.id)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#087f73]"><Copy size={13}/> Copy invitation link</button>}</div>)}</div>}
+   {invitations.length===0?<div className="py-14 text-center"><Building2 size={30} className="mx-auto text-[#0bb89b]"/><p className="mt-3 font-bold">No invitations yet</p><p className="mt-1 text-sm text-[#71838e]">Invitations you create will appear here.</p></div>:<div className="mt-5 divide-y divide-[#edf1f3]">{invitations.map(i=><div key={i.id} className="py-4 first:pt-0"><div className="flex items-center justify-between gap-3"><p className="break-all text-sm font-extrabold">{i.invited_email}</p><span className={"shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase "+(i.status==="accepted"?"bg-[#e9faf6] text-[#087f73]":i.status==="pending"?"bg-[#fff8e7] text-[#8a691f]":"bg-[#eef3f6] text-[#60737e]")}>{i.status}</span></div><p className="mt-1 text-xs text-[#71838e]">{propertyName(i.property_id)} · {new Date(i.created_at).toLocaleDateString("en-IN")}</p>{i.status==="pending"&&<><p className="mt-2 text-xs text-[#71838e]">{i.email_sent_at?"Email sent "+new Date(i.email_sent_at).toLocaleString("en-IN"):i.email_error?"Email failed — use the fallback link":"Email not yet sent"}</p><button onClick={()=>void copy(window.location.origin+"/owner/invitations?id="+i.id)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[#087f73]"><Copy size={13}/> Copy fallback link</button></>}</div>)}</div>}
   </div>
  </div>
  <div className="mt-6 flex items-start gap-3 rounded-2xl border border-[#dfe9ed] bg-white p-5 text-xs leading-6 text-[#607889]"><ShieldCheck size={18} className="mt-0.5 shrink-0 text-[#087f73]"/><p><strong className="text-[#193246]">Ownership protection:</strong> creating an invitation does not change the property owner. The owner must be signed in with the invited email and explicitly accept. The broker remains the listing representative.</p></div>
