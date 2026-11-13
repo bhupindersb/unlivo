@@ -47,6 +47,56 @@ function contextValue(feature: Suggestion, keys: string[]) {
   return "";
 }
 
+// Bias common Tricity searches toward the requested city and never show a
+// neighboring city's result as a match for an explicitly named city.
+const CITY_SEARCH: Record<string, { proximity: string; aliases: string[] }> = {
+  mohali: {
+    proximity: "76.7179,30.7046",
+    aliases: ["mohali", "sahibzada ajit singh nagar", "sas nagar"],
+  },
+  chandigarh: {
+    proximity: "76.7794,30.7333",
+    aliases: ["chandigarh"],
+  },
+  panchkula: {
+    proximity: "76.8530,30.6942",
+    aliases: ["panchkula"],
+  },
+  zirakpur: {
+    proximity: "76.8179,30.6425",
+    aliases: ["zirakpur"],
+  },
+  kharar: {
+    proximity: "76.6470,30.7463",
+    aliases: ["kharar"],
+  },
+};
+
+function requestedCityFor(query: string) {
+  const normalized = query.toLowerCase();
+  return Object.entries(CITY_SEARCH).find(([city]) =>
+    new RegExp(`\\\\b${city}\\\\b`, "i").test(normalized)
+  )?.[1];
+}
+
+function belongsToRequestedCity(feature: Suggestion, aliases: string[]) {
+  const context = feature.properties?.context || {};
+  const contextNames = Object.values(context)
+    .map((item) => item?.name || "")
+    .join(" ");
+  const searchable = [
+    feature.properties?.full_address,
+    feature.properties?.place_formatted,
+    feature.place_name,
+    contextNames,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return aliases.some((alias) => searchable.includes(alias));
+}
+
 export default function PropertyLocation({ value, onChange, onPlace }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,16 +136,20 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
+        const requestedCity = requestedCityFor(query);
         const params = new URLSearchParams({
           q: query,
           country: "in",
           worldview: "in",
           language: "en",
-          limit: "6",
+          limit: "10",
           types: "address,street,neighborhood,locality,place,district,postcode",
           autocomplete: "true",
           access_token: token,
         });
+        if (requestedCity) {
+          params.set("proximity", requestedCity.proximity);
+        }
 
         const response = await fetch(
           `https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`,
@@ -107,7 +161,13 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
           throw new Error(message);
         }
         if (requestId === requestIdRef.current) {
-          setSuggestions(Array.isArray(data.features) ? data.features : []);
+          const features = Array.isArray(data.features) ? data.features : [];
+          const relevantFeatures = requestedCity
+            ? features.filter((feature: Suggestion) =>
+                belongsToRequestedCity(feature, requestedCity.aliases)
+              )
+            : features;
+          setSuggestions(relevantFeatures);
           setSearchError("");
         }
       } catch (error) {
@@ -219,7 +279,9 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
             ? searchError
             : !token
             ? "Address suggestions are currently unavailable. You can still enter the address and location details manually."
-            : "Choose the closest matching address. You can add your apartment/house number and floor separately below."}
+            : suggestions.length === 0 && value.trim().length >= 3 && requestedCityFor(value)
+              ? `No matching result found in ${value.split(/[, ]/).pop()}. Try adding the locality or nearby road name.`
+              : "Choose the closest matching address. You can add your apartment/house number and floor separately below."}
       </p>
     </div>
   );
