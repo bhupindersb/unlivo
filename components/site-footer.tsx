@@ -4,15 +4,15 @@ export default function SiteFooter() {
   return (
     <footer id="resources" className="border-t border-white/10 bg-[#071d2d] text-white">
       <div className="container py-14 sm:py-16">
-        <div className="grid gap-11 sm:grid-cols-2 lg:grid-cols-[1.35fr_1fr_1fr_1fr] lg:gap-12">
-          <div className="max-w-sm">
+        <div className="grid justify-items-center gap-11 text-center sm:grid-cols-2 lg:grid-cols-[1.35fr_1fr_1fr_1fr] lg:justify-items-start lg:gap-12 lg:text-left">
+          <div className="mx-auto max-w-sm lg:mx-0">
             <a href="/" className="inline-block w-[170px] rounded-lg bg-white p-2" aria-label="UNLIVO home">
               <img src="/unlivo-logo.svg" alt="UNLIVO - property discovery and buyer matching" className="w-full" />
             </a>
             <p className="mt-5 text-sm leading-7 text-[#b8c8d2]">
               Find the right property. Find the right buyer. Share what you need and discover relevant property options across the UNLIVO marketplace.
             </p>
-            <a href="/post-requirement" className="mt-6 inline-flex items-center rounded-xl bg-[#13c6a3] px-5 py-3 text-sm font-bold text-[#06251f] transition hover:bg-[#62d9c1]">
+            <a href="/post-requirement" className="mx-auto mt-6 inline-flex items-center rounded-xl lg:mx-0 bg-[#13c6a3] px-5 py-3 text-sm font-bold text-[#06251f] transition hover:bg-[#62d9c1]">
               Post Your Requirement <span aria-hidden="true" className="ml-2">→</span>
             </a>
           </div>
@@ -51,7 +51,7 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-white/10 pt-6 text-xs text-[#91a5b2] sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col items-center gap-4 border-t border-white/10 pt-6 text-center text-xs text-[#91a5b2] sm:flex-row sm:items-center sm:justify-between lg:text-left">
           <p>© {new Date().getFullYear()} UNLIVO. Find the right property. Find the right buyer.</p>
           <p>Property discovery and buyer matching across Mohali, Chandigarh and Zirakpur.</p>
         </div>
