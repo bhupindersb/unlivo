@@ -75,7 +75,7 @@ const CITY_SEARCH: Record<string, { proximity: string; aliases: string[] }> = {
 function requestedCityFor(query: string) {
   const normalized = query.toLowerCase();
   return Object.entries(CITY_SEARCH).find(([city]) =>
-    new RegExp(`\\\\b${city}\\\\b`, "i").test(normalized)
+    new RegExp(`\\b${city}\\b`, "i").test(normalized)
   )?.[1];
 }
 
