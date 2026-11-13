@@ -35,7 +35,7 @@ type Property = {
   rent_monthly: number | null; purpose: string; category: string; property_type: string | null;
   bedrooms: number | null; area_sqft: number | null; possession: string | null;
   furnishing: string | null; status: string; match_score: number; match_reasons: Reason[];
-  ai_relevance_score?: number; ai_explanation?: string; ai_strengths?: string[]; ai_tradeoffs?: string[];
+  preference_fit_score: number; preference_fit_summary: string; preference_fit_strengths: string[]; preference_fit_tradeoffs: string[];
 };
 
 const sentence = (v: string) => v.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -68,7 +68,6 @@ export default function MyRequirements() {
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(true);
   const [matchingLoading, setMatchingLoading] = useState(false);
-  const [aiMatchingEnabled, setAiMatchingEnabled] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -107,7 +106,7 @@ export default function MyRequirements() {
   useEffect(() => {
     (async () => {
       if (!supabase || !requirement) return;
-      setMatchingLoading(true); setError(""); setAiMatchingEnabled(false);
+      setMatchingLoading(true); setError("");
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) { setError("Your session has expired. Please sign in again."); setProperties([]); setMatchingLoading(false); return; }
       try {
@@ -119,7 +118,6 @@ export default function MyRequirements() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || "Unable to retrieve property matches.");
         setProperties((result.properties || []) as Property[]);
-        setAiMatchingEnabled(Boolean(result.aiEnabled));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to retrieve property matches.");
         setProperties([]);
@@ -138,7 +136,7 @@ export default function MyRequirements() {
     return [...list].sort((a, b) => {
       if (sortBy === "price") return (a.price ?? a.rent_monthly ?? Number.MAX_SAFE_INTEGER) - (b.price ?? b.rent_monthly ?? Number.MAX_SAFE_INTEGER);
       if (sortBy === "newest") return b.id.localeCompare(a.id);
-      return (b.ai_relevance_score ?? b.match_score) - (a.ai_relevance_score ?? a.match_score) || b.match_score - a.match_score;
+      return (b.preference_fit_score ?? b.match_score) - (a.preference_fit_score ?? a.match_score) || b.match_score - a.match_score;
     }).slice(0, 12);
   }, [properties, search, minMatch, sortBy]);
 
@@ -201,7 +199,7 @@ export default function MyRequirements() {
                   <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7f7f3] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#087f73]"><Sparkles size={12} /> {aiMatchingEnabled ? "AI-assisted matching" : "Smart matching"}</span>
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e7f7f3] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[1px] text-[#087f73]"><Sparkles size={12} /> Smart matching</span>
                         <span className="text-xs text-[#81919a]">{properties.length} properties evaluated</span>
                       </div>
                       <h2 className="mt-3 text-2xl font-extrabold">{requirement.purpose === "sale" ? "Buy" : "Rent"} in {requirement.preferred_cities.join(", ") || "your preferred locations"}</h2>
@@ -258,7 +256,7 @@ export default function MyRequirements() {
                       const negative = p.match_reasons.filter(x => !x.ok);
                       return (
                         <article key={p.id} className="group overflow-hidden rounded-2xl border border-[#dfe9ed] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                          <div className="border-b border-[#e8eff1] bg-[#f8fbfc] p-4"><ScoreBadge score={p.match_score} />{aiMatchingEnabled && p.ai_relevance_score != null && <div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-[#cceee5] bg-[#effbf7] px-3 py-2"><span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[#087f73]"><Sparkles size={12}/> AI preference fit</span><span className="text-xs font-extrabold text-[#087f73]">{p.ai_relevance_score}/100</span></div>}</div>
+                          <div className="border-b border-[#e8eff1] bg-[#f8fbfc] p-4"><ScoreBadge score={p.match_score} /><div className="mt-3 flex items-center justify-between gap-2 rounded-xl border border-[#cceee5] bg-[#effbf7] px-3 py-2"><span className="text-[10px] font-extrabold uppercase tracking-wide text-[#087f73]">Overall preference fit</span><span className="text-xs font-extrabold text-[#087f73]">{p.preference_fit_score}/100</span></div></div>
                           <div className="p-5">
                             <h3 className="line-clamp-2 text-lg font-extrabold">{p.title}</h3>
                             <p className="mt-2 flex items-start gap-1 text-sm text-[#687987]"><MapPin size={15} className="mt-0.5 shrink-0 text-[#0bb89b]" />{p.locality}, {p.city}</p>
@@ -268,7 +266,7 @@ export default function MyRequirements() {
                               {p.bedrooms != null && <span className="rounded-full bg-[#f1f5f7] px-2.5 py-1">{p.bedrooms} bed</span>}
                               {p.area_sqft != null && <span className="rounded-full bg-[#f1f5f7] px-2.5 py-1">{p.area_sqft.toLocaleString("en-IN")} sq ft</span>}
                             </div>
-                            {aiMatchingEnabled && p.ai_explanation && <div className="mt-4 rounded-xl border border-[#cceee5] bg-[#f2fbf8] p-3"><p className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wide text-[#087f73]"><Sparkles size={12}/> AI insight</p><p className="mt-1.5 text-xs leading-5 text-[#466273]">{p.ai_explanation}</p>{Boolean(p.ai_strengths?.length) && <p className="mt-2 text-[11px] leading-5 text-[#466273]"><strong>Preference fit:</strong> {p.ai_strengths?.join(" · ")}</p>}{Boolean(p.ai_tradeoffs?.length) && <p className="mt-1 text-[11px] leading-5 text-[#8a6666]"><strong>Worth checking:</strong> {p.ai_tradeoffs?.join(" · ")}</p>}</div>}
+                            {<div className="mt-4 rounded-xl border border-[#e3ecef] bg-[#f8fbfc] p-3"><p className="text-[10px] font-extrabold uppercase tracking-wide text-[#547083]">Preference assessment</p><p className="mt-1.5 text-xs leading-5 text-[#466273]">{p.preference_fit_summary}</p>{Boolean(p.preference_fit_strengths?.length) && <p className="mt-2 text-[11px] leading-5 text-[#466273]"><strong>Fits:</strong> {p.preference_fit_strengths.join(" · ")}</p>}{Boolean(p.preference_fit_tradeoffs?.length) && <p className="mt-1 text-[11px] leading-5 text-[#8a6666]"><strong>Check:</strong> {p.preference_fit_tradeoffs.join(" · ")}</p>}</div>}
                             <button type="button" onClick={() => setExpanded(open ? null : p.id)} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#cbdde3] px-4 py-2.5 text-sm font-bold text-[#123b53] transition hover:border-[#0bb89b] hover:text-[#087f73]">{open ? "Hide match details" : "Why this matches"} {open ? <X size={15} /> : <ArrowRight size={15} />}</button>
                             {open && <div className="mt-4 rounded-2xl border border-[#e3ecef] bg-[#f8fbfc] p-4">
                               <p className="text-[11px] font-extrabold uppercase tracking-[1.4px] text-[#547083]">Match breakdown</p>
