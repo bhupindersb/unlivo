@@ -19,3 +19,14 @@ button:disabled, [aria-disabled="true"] { cursor:not-allowed; }
 @media (max-width:767px) {
   .container { width:min(100% - 28px,1180px); }
 }
+
+
+/* Shared typography for public information, help and legal pages. */
+.info-content { color:#405464; font-size:15px; line-height:1.85; }
+.info-content h2 { margin:2rem 0 .65rem; color:#102638; font-size:1.18rem; line-height:1.4; font-weight:800; }
+.info-content h2:first-child { margin-top:0; }
+.info-content p { margin:.8rem 0; }
+.info-content ul { margin: .85rem 0 1.2rem; padding-left:1.35rem; list-style:disc; }
+.info-content li { margin:.45rem 0; padding-left:.2rem; }
+.info-content a { color:#087f73; font-weight:650; text-decoration:underline; text-underline-offset:3px; }
+.info-content strong { color:#183447; font-weight:750; }
