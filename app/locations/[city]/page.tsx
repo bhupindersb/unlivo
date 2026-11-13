@@ -53,7 +53,8 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
     title: market.title,
     description: market.description,
     alternates: { canonical: `/locations/${city}` },
-    robots: city === "chandigarh" || city === "new-chandigarh" ? { index: false, follow: true } : { index: true, follow: true },
+    // Keep all city landing pages out of the index until genuine, approved inventory is available.
+    robots: { index: false, follow: true },
     openGraph: { title: market.title, description: market.description, url: `https://www.unlivo.com/locations/${city}` },
   };
 }
