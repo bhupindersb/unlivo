@@ -26,6 +26,7 @@ export default function BrokerSubscriptionPage(){
  useEffect(()=>{void load()},[]);
  async function load(){
   setLoading(true);setError("");
+  try {
   const {data:{session}}=await supabase.auth.getSession();
   if(!session?.user){window.location.assign("/login");return}
   const uid=session.user.id;
@@ -48,6 +49,7 @@ export default function BrokerSubscriptionPage(){
   setFounder(founderResult.data as Founder|null);
   setActiveCount(countResult.count||0);
   setLoading(false);
+  } catch (e:any) { setError(e?.message || "Unable to load your subscription."); setLoading(false); }
  }
  const currentPlan=useMemo(()=>plans.find(p=>p.id===sub?.plan_id)||plans.find(p=>p.code==="starter"),[plans,sub]);
  const discountActive=!!founder&&new Date(founder.discount_ends_at)>new Date();
