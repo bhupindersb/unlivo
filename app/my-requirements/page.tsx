@@ -67,7 +67,8 @@ export default function MyRequirements() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [selected, setSelected] = useState("");
   const [loading, setLoading] = useState(true);
-  const [matchingLoading, setMatchingLoading] = useState(false);\n  const [aiMatchingEnabled, setAiMatchingEnabled] = useState(false);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [aiMatchingEnabled, setAiMatchingEnabled] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
