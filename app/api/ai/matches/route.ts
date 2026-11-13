@@ -59,7 +59,7 @@ function preferenceResult(candidate: Candidate, requirement: any) {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
+    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     if (!token) return NextResponse.json({ error: "Please sign in to view your matches." }, { status: 401 });
 
     const { requirementId } = await request.json();
