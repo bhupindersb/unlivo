@@ -138,7 +138,7 @@ export default function MyRequirements() {
     return [...list].sort((a, b) => {
       if (sortBy === "price") return (a.price ?? a.rent_monthly ?? Number.MAX_SAFE_INTEGER) - (b.price ?? b.rent_monthly ?? Number.MAX_SAFE_INTEGER);
       if (sortBy === "newest") return b.id.localeCompare(a.id);
-      return b.match_score - a.match_score;
+      return (b.ai_relevance_score ?? b.match_score) - (a.ai_relevance_score ?? a.match_score) || b.match_score - a.match_score;
     }).slice(0, 12);
   }, [properties, search, minMatch, sortBy]);
 
