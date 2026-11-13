@@ -36,7 +36,7 @@ export default function BrokerSubscriptionPage(){
   setBrokerName(profile.data.full_name||"Broker");
   const [planResult,subResult,founderResult,ownResult,relationResult]=await Promise.all([
    supabase.from("broker_plans").select("id,code,name,monthly_price_paise,annual_price_paise,active_listing_limit,sort_order").eq("is_active",true).order("sort_order"),
-   supabase.from("broker_subscriptions").select("id,status,billing_cycle,base_amount_paise,discount_percent,amount_paid_paise,current_period_start,current_period_end,renewal_due_at,plan_id").eq("broker_id",uid).eq("status","active").order("created_at",{ascending:false}).limit(1).maybeSingle(),
+   supabase.from("broker_subscriptions").select("id,status,billing_cycle,base_amount_paise,discount_percent,amount_paid_paise,current_period_start,current_period_end,renewal_due_at,plan_id").eq("broker_id",uid).eq("status","active").or(`current_period_end.is.null,current_period_end.gt.${new Date().toISOString()}`).order("created_at",{ascending:false}).limit(1).maybeSingle(),
    supabase.from("broker_founder_slots").select("slot_number,discount_percent,assigned_at,discount_ends_at").eq("broker_id",uid).maybeSingle(),
    supabase.from("properties").select("id").eq("listed_by",uid).in("status",activeStatuses),
    supabase.from("property_broker_relationships").select("property_id").eq("broker_id",uid).eq("relationship_type","listing_representation").eq("status","active")
