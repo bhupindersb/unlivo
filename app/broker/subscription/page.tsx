@@ -34,20 +34,25 @@ export default function BrokerSubscriptionPage(){
   if(profile.error)throw new Error(profile.error.message);
   if(profile.data?.role!=="broker"||profile.data?.broker_status!=="approved"||profile.data?.access_status!=="active"){window.location.assign("/for-brokers");return}
   setBrokerName(profile.data.full_name||"Broker");
-  const [planResult,subResult,founderResult,countResult]=await Promise.all([
+  const [planResult,subResult,founderResult,ownResult,relationResult]=await Promise.all([
    supabase.from("broker_plans").select("id,code,name,monthly_price_paise,annual_price_paise,active_listing_limit,sort_order").eq("is_active",true).order("sort_order"),
    supabase.from("broker_subscriptions").select("id,status,billing_cycle,base_amount_paise,discount_percent,amount_paid_paise,current_period_start,current_period_end,renewal_due_at,plan_id").eq("broker_id",uid).eq("status","active").order("created_at",{ascending:false}).limit(1).maybeSingle(),
    supabase.from("broker_founder_slots").select("slot_number,discount_percent,assigned_at,discount_ends_at").eq("broker_id",uid).maybeSingle(),
-   supabase.from("properties").select("id",{count:"exact",head:true}).eq("listed_by",uid).in("status",activeStatuses)
+   supabase.from("properties").select("id").eq("listed_by",uid).in("status",activeStatuses),
+   supabase.from("property_broker_relationships").select("property_id").eq("broker_id",uid).eq("relationship_type","listing_representation").eq("status","active")
   ]);
   if(planResult.error)throw new Error(planResult.error.message);
   if(subResult.error)throw new Error(subResult.error.message);
   if(founderResult.error)throw new Error(founderResult.error.message);
-  if(countResult.error)throw new Error(countResult.error.message);
+  if(ownResult.error)throw new Error(ownResult.error.message);
+  if(relationResult.error)throw new Error(relationResult.error.message);
+  const listingIds=Array.from(new Set([...(ownResult.data||[]).map((x:any)=>x.id),...(relationResult.data||[]).map((x:any)=>x.property_id)]));
+  let activeListings=0;
+  if(listingIds.length){const active=await supabase.from("properties").select("id").in("id",listingIds).in("status",activeStatuses);if(active.error)throw new Error(active.error.message);activeListings=(active.data||[]).length;}
   setPlans((planResult.data||[]) as Plan[]);
   setSub(subResult.data as Subscription|null);
   setFounder(founderResult.data as Founder|null);
-  setActiveCount(countResult.count||0);
+  setActiveCount(activeListings);
   setLoading(false);
   } catch (e:any) { setError(e?.message || "Unable to load your subscription."); setLoading(false); }
  }
