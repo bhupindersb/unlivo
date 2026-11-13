@@ -19,8 +19,11 @@ type Suggestion = {
   place_name?: string;
   text?: string;
   properties?: {
+    mapbox_id?: string;
     full_address?: string;
+    place_formatted?: string;
     name?: string;
+    name_preferred?: string;
     feature_type?: string;
     context?: Record<string, ContextItem>;
   };
@@ -47,6 +50,7 @@ function contextValue(feature: Suggestion, keys: string[]) {
 export default function PropertyLocation({ value, onChange, onPlace }: Props) {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const changeRef = useRef(onChange);
   const placeRef = useRef(onPlace);
   const selectedValueRef = useRef("");
@@ -66,12 +70,14 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
     if (query && query === selectedValueRef.current) {
       setSuggestions([]);
       setLoading(false);
+      setSearchError("");
       return;
     }
 
     if (!token || query.length < 3) {
       setSuggestions([]);
       setLoading(false);
+      setSearchError("");
       return;
     }
 
@@ -86,7 +92,7 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
           worldview: "in",
           language: "en",
           limit: "6",
-          types: "address,street,poi,neighborhood,locality,place",
+          types: "address,street,neighborhood,locality,place,district,postcode",
           autocomplete: "true",
           access_token: token,
         });
@@ -95,15 +101,19 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
           `https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`,
           { signal: controller.signal }
         );
-        if (!response.ok) throw new Error("Location search failed");
-
         const data = await response.json();
+        if (!response.ok) {
+          const message = typeof data?.message === "string" ? data.message : "Mapbox could not complete the address search.";
+          throw new Error(message);
+        }
         if (requestId === requestIdRef.current) {
           setSuggestions(Array.isArray(data.features) ? data.features : []);
+          setSearchError("");
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError" && requestId === requestIdRef.current) {
           setSuggestions([]);
+          setSearchError((error as Error).message || "Unable to search addresses right now.");
         }
       } finally {
         if (requestId === requestIdRef.current) setLoading(false);
@@ -142,7 +152,7 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
       pincode,
       latitude,
       longitude,
-      placeId: feature.id || null,
+      placeId: feature.properties?.mapbox_id || feature.id || null,
     });
   }
 
@@ -170,6 +180,7 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
         >
           {suggestions.map((suggestion) => {
             const title =
+              suggestion.properties?.name_preferred ||
               suggestion.properties?.name ||
               suggestion.text ||
               suggestion.place_name ||
@@ -177,6 +188,7 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
             const detail =
               suggestion.properties?.full_address ||
               suggestion.place_name ||
+              suggestion.properties?.place_formatted ||
               "";
             return (
               <button
@@ -203,7 +215,9 @@ export default function PropertyLocation({ value, onChange, onPlace }: Props) {
       <p className="mt-2 text-xs text-[#7b8c97]">
         {loading
           ? "Finding matching addresses in India…"
-          : !token
+          : searchError
+            ? searchError
+            : !token
             ? "Address suggestions are currently unavailable. You can still enter the address and location details manually."
             : "Choose the closest matching address. You can add your apartment/house number and floor separately below."}
       </p>
