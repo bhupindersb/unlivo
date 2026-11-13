@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { escapeHtml, renderUnlivoEmail } from "../_shared/email-template.ts";
 
 const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type", "Content-Type": "application/json" };
 const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), { status, headers: cors });
@@ -84,7 +85,7 @@ Deno.serve(async (req: Request) => {
         if (recipientError) { console.error("transaction-notification: recipient lookup failed", recipientError.message); continue; }
         if (!recipient?.user?.email) { console.error("transaction-notification: recipient has no email", recipientId); continue; }
         console.log("transaction-notification: attempting email", { recipient: recipient.user.email });
-        const html = '<div style="font-family:Arial,sans-serif;color:#102638;max-width:620px;margin:auto"><h2>' + escapeHtml(heading) + '</h2><p>' + escapeHtml(message) + '</p><p><a href="https://www.unlivo.com' + targetPath + '" style="display:inline-block;background:#071d2d;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px">Open Transaction</a></p><p style="font-size:12px;color:#687987">You are receiving this because you are involved in this UNLIVO property transaction.</p></div>';
+        const html = renderUnlivoEmail({preheader:heading,heading,intro:escapeHtml(message),ctaLabel:"Open Transaction",ctaUrl:"https://www.unlivo.com"+targetPath,footer:"You are receiving this because you are involved in this UNLIVO property transaction."});
         const response = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: "Bearer " + resendKey, "Content-Type": "application/json" }, body: JSON.stringify({ from, to: [recipient.user.email], subject, html }) });
         const emailBody = await response.text();
         if (response.ok) {
