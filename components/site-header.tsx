@@ -79,10 +79,10 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           <div className="invisible absolute left-1/2 top-full z-40 mt-3 w-[340px] -translate-x-1/2 rounded-2xl border border-[#dfe9ed] bg-white p-5 opacity-0 shadow-[0_18px_50px_rgba(16,38,56,0.14)] transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[1.5px] text-[#7b8c97]">Explore properties by city</p>
             <div className="grid grid-cols-2 gap-2">
-              <a href="/locations/mohali" className="rounded-xl px-3 py-3 text-sm font-semibold text-[#193246] hover:bg-[#f1f8f7] hover:text-[#087f73]">Mohali</a>
-              <a href="/locations/chandigarh" className="rounded-xl px-3 py-3 text-sm font-semibold text-[#193246] hover:bg-[#f1f8f7] hover:text-[#087f73]">Chandigarh</a>
-              <a href="/locations/zirakpur" className="rounded-xl px-3 py-3 text-sm font-semibold text-[#193246] hover:bg-[#f1f8f7] hover:text-[#087f73]">Zirakpur</a>
-              <a href="/locations/new-chandigarh" className="rounded-xl px-3 py-3 text-sm font-semibold text-[#193246] hover:bg-[#f1f8f7] hover:text-[#087f73]">New Chandigarh</a>
+              <a href="/locations/mohali" className="rounded-xl px-3 py-3 text-[13px] font-medium text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73]">Mohali</a>
+              <a href="/locations/chandigarh" className="rounded-xl px-3 py-3 text-[13px] font-medium text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73]">Chandigarh</a>
+              <a href="/locations/zirakpur" className="rounded-xl px-3 py-3 text-[13px] font-medium text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73]">Zirakpur</a>
+              <a href="/locations/new-chandigarh" className="rounded-xl px-3 py-3 text-[13px] font-medium text-[#193246] transition hover:bg-[#f1f8f7] hover:text-[#087f73]">New Chandigarh</a>
             </div>
             <a href="/properties" className="mt-3 block border-t border-[#edf1f3] pt-3 text-xs font-bold text-[#087f73]">Browse all properties →</a>
           </div>
