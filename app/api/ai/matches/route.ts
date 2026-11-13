@@ -62,9 +62,10 @@ export async function POST(request: NextRequest) {
     });
     if (matchError) return NextResponse.json({ error: "Unable to retrieve property matches." }, { status: 400 });
     if (!candidates?.length) return NextResponse.json({ aiEnabled: false, properties: [] });
+    const normalizedCandidates = candidates.map((item: any) => ({ ...item, id: item.property_id }));
 
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return NextResponse.json({ aiEnabled: false, properties: candidates });
+    if (!apiKey) return NextResponse.json({ aiEnabled: false, properties: normalizedCandidates });
 
     const candidateIds = candidates.map((item: { property_id: string }) => item.property_id);
     const { data: details } = await supabase
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
         ai_tradeoffs: Array.isArray(item.tradeoffs) ? item.tradeoffs.slice(0, 2).map((x: unknown) => String(x).slice(0, 140)) : [],
       });
     }
-    const ranked = candidates.map((item: any) => ({ ...item, ...(analyses.get(item.property_id) || {}) }))
+    const ranked = normalizedCandidates.map((item: any) => ({ ...item, ...(analyses.get(item.property_id) || {}) }))
       .sort((a: any, b: any) => (b.ai_relevance_score ?? -1) - (a.ai_relevance_score ?? -1) || b.match_score - a.match_score);
 
     return NextResponse.json({ aiEnabled: analyses.size > 0, properties: ranked });
